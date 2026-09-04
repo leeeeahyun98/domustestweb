@@ -36,7 +36,7 @@
   /* ---------------- login screen ---------------- */
   #loginScreen{
     position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-    background:var(--bg); z-index:100;
+    background:var(--bg); z-index:100; padding:20px;
   }
   #loginScreen[hidden]{ display:none; }
   .login-card{
@@ -111,9 +111,19 @@
   }
   .sidebar-toggle:hover{ background:var(--surface-3); }
   #appShell.sidebar-hidden .sidebar-toggle{ display:flex; }
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(10,13,18,.4); z-index:45; }
 
+  /* 모바일: 사이드바가 고정폭 컬럼이 아니라 위에서 슬라이드되는 서랍(overlay)으로 동작 */
   @media (max-width:860px){
-    .sidebar{ width:188px; }
+    .sidebar{
+      position:fixed; top:0; left:0; width:248px; max-width:82vw; z-index:50;
+      box-shadow:0 0 32px rgba(0,0,0,.22);
+      transform:translateX(-100%); transition:transform .2s ease;
+    }
+    #appShell.sidebar-hidden .sidebar{ display:flex; transform:translateX(-100%); }
+    #appShell:not(.sidebar-hidden) .sidebar{ transform:translateX(0); }
+    #appShell:not(.sidebar-hidden) .sidebar-backdrop{ display:block; }
+    .sidebar-toggle{ left:12px; bottom:12px; }
   }
 </style>
 </head>
@@ -134,6 +144,7 @@
 
 <div id="appShell" hidden>
   <button class="sidebar-toggle" id="sidebarToggleBtn" title="메뉴 열기">☰</button>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <div class="sidebar">
     <div class="sidebar-brand">
       <span class="mark">DOMUS</span>
@@ -184,11 +195,13 @@
           <span class="count" id="calCount">이번 달 0건</span>
         </div>
         <div class="cal-nav">
-          <button class="add-holiday-btn" id="addHolidayBtn">+ 휴일/기타 일정</button>
           <button class="nav-btn" id="prevBtn" aria-label="이전 달">‹</button>
-          <button class="today-btn" id="todayBtn">오늘</button>
+          <div class="cal-nav-mid">
+            <button class="today-btn" id="todayBtn">오늘</button>
+          </div>
           <button class="nav-btn" id="nextBtn" aria-label="다음 달">›</button>
         </div>
+        <button class="add-holiday-btn" id="addHolidayBtn">+ 휴일/기타 일정</button>
       </div>
       <div class="weekdays">
         <div class="sun">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="sat">토</div>
@@ -231,7 +244,7 @@
         </div>
         <div class="field">
           <label>내용</label>
-          <input type="text" id="addLabel" placeholder="예: 추석연휴, 전 직원 워크숍">
+          <input type="text" id="addLabel" placeholder="예: 추석연휴, 전 직원 워크샵">
         </div>
         <div class="btn-row">
           <button class="btn" id="addCancelBtn">취소</button>
@@ -261,10 +274,12 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="searchInput" placeholder="브랜드·발주처·점포명으로 검색">
       </div>
-      <div class="filter-group"><label>브랜드</label><select class="filter-select" id="filterBrand"></select></div>
-      <div class="filter-group"><label>발주처</label><select class="filter-select" id="filterClient"></select></div>
-      <div class="filter-group"><label>담당자</label><select class="filter-select" id="filterRep"></select></div>
-      <div class="filter-group"><label>기간</label><select class="filter-select" id="filterPeriod"></select></div>
+      <div class="filter-row">
+        <div class="filter-group"><label>브랜드</label><select class="filter-select" id="filterBrand"></select></div>
+        <div class="filter-group"><label>발주처</label><select class="filter-select" id="filterClient"></select></div>
+        <div class="filter-group"><label>담당자</label><select class="filter-select" id="filterRep"></select></div>
+        <div class="filter-group"><label>기간</label><select class="filter-select" id="filterPeriod"></select></div>
+      </div>
     </div>
 
     <div class="client-panel" id="clientPanel"></div>
@@ -276,9 +291,9 @@
             <th class="col-num">No.</th>
             <th>발주처</th>
             <th>담당자</th>
-            <th>주문일</th>
+            <th>수주일</th>
             <th>다음 일정</th>
-            <th style="text-align:right">견적 금액</th>
+            <th style="text-align:right">견적금액</th>
             <th class="col-manage"></th>
           </tr>
         </thead>
@@ -292,11 +307,11 @@
   <div class="page">
     <div class="topbar">
       <span class="mark">DOMUS</span>
-      <h1>주문 등록</h1>
+      <h1>수주 등록</h1>
     </div>
 
     <div class="card">
-      <h2>기본 정보</h2>
+      <h2>기본정보</h2>
       <div class="field-grid">
         <div class="field">
           <label>브랜드<span class="req">*</span></label>
@@ -315,9 +330,9 @@
           <label>담당자<span class="req">*</span></label>
           <select id="f-rep"></select>
         </div>
-        <div class="field"><label>주문일<span class="req">*</span></label><input id="f-orderdate" type="date"></div>
+        <div class="field"><label>수주일<span class="req">*</span></label><input id="f-orderdate" type="date"></div>
         <div class="field full">
-          <label>주문형태</label>
+          <label>수주타입</label>
           <div class="chip-group" id="orderTypeChips">
             <div class="chip active" data-v="일반">일반</div>
             <div class="chip" data-v="긴급">긴급</div>
@@ -331,14 +346,14 @@
           </div>
         </div>
         <div class="field full">
-          <label>주문확정일</label>
+          <label>수주확정일</label>
           <input id="f-confirmdate" type="date">
         </div>
       </div>
     </div>
 
     <div class="card">
-      <h2>견적 금액</h2>
+      <h2>견적금액</h2>
       <div class="field">
         <div class="amount-row">
           <input id="f-amount" type="text" inputmode="numeric" placeholder="예: 5,200,000">
@@ -361,7 +376,7 @@
       <div class="collapsible" id="contactBody">
         <div class="hint" id="autofillNote" style="display:none">✓ 등록된 발주처 정보를 불러왔습니다 (필요하면 수정하세요)</div>
         <div class="field-grid">
-          <div class="field full"><label>점포주소</label><input id="f-address" placeholder="예: 서울 강남구 ..."></div>
+          <div class="field full"><label>점포주소</label><input id="f-address" placeholder="예: 서울 강동구 ..."></div>
           <div class="field"><label>발주처담당자</label><input id="f-clientcontact"></div>
           <div class="field"><label>전화번호</label><input id="f-clientphone" placeholder="010-0000-0000"></div>
           <div class="field"><label>인테리어업체</label><input id="f-interior"></div>
@@ -419,7 +434,7 @@
 
     <div>
       <div class="stat-row" style="margin-bottom:18px">
-        <div class="stat"><div class="label" id="periodLabel">이번 달 청구 금액</div><div class="num mono" id="statTotal">-</div></div>
+        <div class="stat"><div class="label" id="periodLabel">이번 달 확정금액</div><div class="num mono" id="statTotal">-</div></div>
         <div class="stat"><div class="label">입금완료</div><div class="num mono info" id="statPaid">-</div></div>
         <div class="stat"><div class="label">미수금</div><div class="num mono danger" id="statUnpaid">-</div></div>
         <div class="stat"><div class="label">확인 대기</div><div class="num mono" id="statUnconfirmed">-</div></div>
@@ -428,33 +443,37 @@
       <div class="panel">
         <div class="panel-head">
           <h2>내역</h2>
-          <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
+          <div class="revenue-toolbar">
             <div class="tabs" id="periodTabs">
               <button class="tab active" data-p="month">월별</button>
               <button class="tab" data-p="quarter">분기별</button>
-              <button class="tab" data-p="year">연도별</button>
+              <button class="tab" data-p="year">년도별</button>
               <button class="tab" data-p="brand">브랜드별</button>
               <button class="tab" data-p="client">발주처별</button>
             </div>
             <div class="filter-group"><label>브랜드</label><select class="filter-select" id="brandFilter"></select></div>
             <div class="filter-group"><label>발주처</label><select class="filter-select" id="clientFilter"></select></div>
             <div class="filter-group"><label>담당자</label><select class="filter-select" id="repFilter"></select></div>
-            <label class="upload-btn">
-              엑셀/CSV 업로드
-              <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
-            </label>
-            <span class="upload-status" id="uploadStatus"></span>
+            <div class="upload-wrap">
+              <label class="upload-btn">
+                엑셀/CSV 업로드
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+              </label>
+              <span class="upload-status" id="uploadStatus"></span>
+            </div>
           </div>
         </div>
+        <div class="table-scroll">
         <table>
           <thead>
             <tr>
               <th>날짜</th><th>브랜드</th><th>발주처</th><th>점포명</th><th>담당자</th>
-              <th style="text-align:right">청구 금액</th><th class="center">확인</th><th class="center">입금</th>
+              <th style="text-align:right">확정금액</th><th class="center">확인</th><th class="center">입금</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
+        </div>
         <div class="foot" id="tableFoot"></div>
       </div>
 
@@ -465,7 +484,7 @@
         </div>
         <div class="analysis-grid">
           <div>
-            <div class="chart-title">월별 청구 금액 추이</div>
+            <div class="chart-title">월별 확정금액 추이</div>
             <svg id="monthlyChart" width="100%" height="180" viewBox="0 0 560 180" preserveAspectRatio="xMidYMid meet"></svg>
             <div class="chart-sub" id="monthlyChartSub"></div>
           </div>
@@ -475,8 +494,8 @@
           </div>
         </div>
         <div class="mini-stats-row">
-          <div class="mini-stat"><div class="mini-label">입금률 (청구 대비)</div><div class="mini-num" id="collectRate">-</div></div>
-          <div class="mini-stat"><div class="mini-label">미수금 건수 · 금액</div><div class="mini-num" id="unpaidSummary">-</div></div>
+          <div class="mini-stat"><div class="mini-label">입금률 (확정 대비)</div><div class="mini-num" id="collectRate">-</div></div>
+          <div class="mini-stat"><div class="mini-label">미입금 건수 · 금액</div><div class="mini-num" id="unpaidSummary">-</div></div>
           <div class="mini-stat"><div class="mini-label">최다 매출 브랜드</div><div class="mini-num" id="topBrand">-</div></div>
         </div>
       </div>
@@ -501,10 +520,12 @@
             <button class="add-target-btn" id="addTargetBtn">+ 목표 추가</button>
             <span class="chart-sub" id="targetFormHint">월간 형식: YYYY-MM (예: 2026-09)</span>
           </div>
+          <div class="table-scroll">
           <table class="target-table">
             <thead><tr><th>기간</th><th style="text-align:right">목표금액</th><th style="text-align:right">실적</th><th>달성률</th><th></th></tr></thead>
             <tbody id="targetBody"></tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -540,8 +561,8 @@
 
     <div class="panel">
       <div class="panel-head">
-        <h2>월별 주문 추이</h2>
-        <div class="desc">2025-01 ~ 2026-09 · 주문일 기준</div>
+        <h2>월별 수주 추이</h2>
+        <div class="desc">2025-01 ~ 2026-09 · 수주일 기준</div>
       </div>
       <div class="panel-body">
         <svg id="monthlyChart" viewBox="0 0 720 220"></svg>
@@ -552,40 +573,40 @@
     <div class="panel">
       <div class="panel-head">
         <h2>거래처 집중도</h2>
-        <div class="desc">발주처별 주문 건수 · 상위 12곳</div>
+        <div class="desc">발주처별 수주 건수 · 상위 12곳</div>
       </div>
       <div class="panel-body" style="padding-top:8px">
-        <table class="data-table" id="paretoTable"></table>
+        <div class="table-scroll"><table class="data-table" id="paretoTable"></table></div>
       </div>
       <div class="panel-foot" id="paretoFoot"></div>
     </div>
 
     <div class="panel">
       <div class="panel-head">
-        <h2>브랜드별 "단품" 비율</h2>
-        <div class="desc">상위 10개 브랜드 · 건당 수량·비번 메모(단품) 성향 비교</div>
+        <h2>브랜드별 "단납" 비율</h2>
+        <div class="desc">상위 10개 브랜드 · 건당 소량·빈번 납품(단납) 성향 비교</div>
       </div>
       <div class="panel-body">
         <svg id="brandChart" viewBox="0 0 640 260"></svg>
       </div>
-      <div class="panel-foot">단품 비율이 높을수록 소수·비정형 메모 패턴 — 스타벅스(SB)는 절반 이상이 단품으로, 다른 일관 메모 위주인 K2·프리미엄디저트·ND와는 업무 성격이 다름</div>
+      <div class="panel-foot">단납 비율이 높을수록 소량·빈번 납품 패턴 — 스타벅스(SB)는 절반 이상이 단납으로, 대량 일괄 납품 위주인 K2·파리바게뜨·ND와는 업무 성격이 다름</div>
     </div>
 
     <div class="panel">
       <div class="panel-head">
         <h2>담당자별 업무량</h2>
-        <div class="desc">전체 908건 기준 · 단품 비율 포함</div>
+        <div class="desc">전체 908건 기준 · 단납 비율 포함</div>
       </div>
       <div class="panel-body" style="padding-top:8px">
-        <table class="data-table" id="repTable"></table>
+        <div class="table-scroll"><table class="data-table" id="repTable"></table></div>
       </div>
-      <div class="panel-foot">건수만 보면 이현재·박성준이 압도적으로 많아 보이지만, 박성준은 단품(비번·소수) 비율이 59.4%로 매우 높아 실제 처리 빈도가 건수 이상일 수 있음</div>
+      <div class="panel-foot">건수만 보면 이현재·박성중이 압도적으로 많아 보이지만, 박성중은 단납(빈번·소량) 비율이 59.4%로 매우 높아 실제 처리 빈도는 건수 이상일 수 있음</div>
     </div>
 
     <div class="panel">
       <div class="panel-head">
-        <h2>요일별 작업 분포</h2>
-        <div class="desc">현장일(현장 확정일) 기준 요일 분포</div>
+        <h2>요일별 작업 부하</h2>
+        <div class="desc">셋팅일(현장 작업일) 기준 요일 분포</div>
       </div>
       <div class="panel-body">
         <svg id="weekdayChart" viewBox="0 0 480 200"></svg>
@@ -600,12 +621,12 @@
       </div>
       <div class="panel-body stack" style="padding-top:12px">
         <div>
-          <div class="callout" style="margin-bottom:8px"><b>미확정 8건</b>&nbsp;— 아직 "등록" 상태로, 현장 잡히지 않은 진행 중 건</div>
-          <table class="data-table" id="pipelineTable"></table>
+          <div class="callout" style="margin-bottom:8px"><b>미확정 8건</b>&nbsp;— 아직 "등록" 상태로, 확정되지 않은 진행 중 건</div>
+          <div class="table-scroll"><table class="data-table" id="pipelineTable"></table></div>
         </div>
         <div>
-          <div class="callout" style="margin-bottom:8px"><b>긴급 4건</b>&nbsp;— 그중 2건이 김가원팀(이현재 담당)에 집중</div>
-          <table class="data-table" id="urgentTable"></table>
+          <div class="callout" style="margin-bottom:8px"><b>긴급 4건</b>&nbsp;— 그중 2건이 금강제화(이현재 담당)에 집중</div>
+          <div class="table-scroll"><table class="data-table" id="urgentTable"></table></div>
         </div>
       </div>
     </div>
@@ -656,21 +677,27 @@
     .dot.holiday{ background:#e5484d; }
     .dot.done{ background:var(--status-done); }
     .add-holiday-btn{
-      background:var(--surface-2); border:1px solid var(--border); color:var(--text);
-      height:30px; padding:0 12px; border-radius:9px; cursor:pointer; font-size:13px;
-      font-weight:600; margin-right:6px;
+      background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent);
+      height:30px; padding:0 14px; border-radius:9px; cursor:pointer; font-size:12.5px;
+      font-weight:700; white-space:nowrap; transition:filter .12s ease;
     }
-    .add-holiday-btn:hover{ background:var(--surface-3); }
+    .add-holiday-btn:hover{ filter:brightness(1.08); }
     .clock{ text-align:right; padding-left:20px; border-left:1px solid var(--border); }
     .clock .time{ font-size:22px; font-weight:600; line-height:1.1; }
     .clock .date{ font-size:12.5px; color:var(--text-muted); }
 
     .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); }
-    .cal-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); }
+    .cal-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
     .cal-title{ display:flex; align-items:baseline; gap:10px; }
     .cal-title h2{ margin:0; font-size:18px; font-weight:700; }
     .cal-title .count{ font-size:12.5px; color:var(--text-faint); }
-    .cal-nav{ display:flex; align-items:center; gap:6px; }
+    .cal-nav{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex:1; min-width:220px; }
+    .cal-nav-mid{ display:flex; align-items:center; justify-content:center; gap:10px; flex:1; }
+    @media (max-width:520px){
+      .cal-head{ flex-direction:column; align-items:stretch; }
+      .cal-nav{ align-items:stretch; order:2; }
+      .add-holiday-btn{ order:1; width:100%; margin-left:0; text-align:center; }
+    }
     .nav-btn{
       background:var(--surface-2); border:1px solid var(--border); color:var(--text);
       width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:14px;
@@ -786,19 +813,21 @@
     .ev-card .assign{ font-size:11.5px; color:var(--text-faint); }
     .ev-card .del-btn{ background:none; border:none; color:var(--text-faint); font-size:11px; cursor:pointer; font-family:inherit; text-decoration:underline; }
 
-    .add-form{ display:flex; flex-direction:column; gap:12px; padding:16px 18px; }
-    .add-form .field{ display:flex; flex-direction:column; gap:5px; }
-    .add-form label{ font-size:12.5px; font-weight:600; color:var(--text-muted); }
+    .add-form{ display:flex; flex-direction:column; gap:14px; padding:16px 18px; }
+    .add-form .field{ display:flex; flex-direction:column; gap:6px; }
+    .add-form label{ font-size:12px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.03em; }
     .add-form input, .add-form select{
-      padding:9px 11px; border-radius:9px; border:1px solid var(--border);
+      box-sizing:border-box; height:40px; padding:0 12px; border-radius:9px; border:1px solid var(--border);
       background:var(--surface); color:var(--text); font-size:13.5px; font-family:inherit;
     }
-    .add-form input[type="date"]{ cursor:pointer; }
-    .add-form input[type="date"]::-webkit-calendar-picker-indicator{ filter:invert(1); cursor:pointer; }
+    .add-form input[type="date"]{ cursor:pointer; color-scheme:dark; }
+    .add-form input[type="date"]::-webkit-calendar-picker-indicator{ filter:invert(1); opacity:.75; cursor:pointer; }
     .add-form .chip-row{ display:flex; gap:8px; }
     .add-form .chip{
-      flex:1; padding:8px 0; text-align:center; border-radius:9px; border:1px solid var(--border);
+      box-sizing:border-box; height:40px; flex:1; display:flex; align-items:center; justify-content:center;
+      border-radius:9px; border:1px solid var(--border);
       background:var(--surface); color:var(--text-muted); font-size:12.5px; font-weight:600; cursor:pointer;
+      transition:background .12s ease, border-color .12s ease, color .12s ease;
     }
     .add-form .chip.active{ background:rgba(229,72,77,.12); border-color:#e5484d; color:#e5484d; }
     .add-form .btn-row{ display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
@@ -846,14 +875,16 @@
     .role-btn.active{ background:var(--accent-soft); color:var(--accent); }
     .role-hint{ font-size:11.5px; color:var(--text-faint); }
 
-    .search-row{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
-    .filter-group{ display:flex; flex-direction:column; gap:4px; }
+    .search-row{ display:flex; flex-direction:column; gap:12px; }
+    .filter-row{ display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+    @media (max-width:640px){ .filter-row{ grid-template-columns:repeat(2, 1fr); } }
+    .filter-group{ display:flex; flex-direction:column; gap:4px; min-width:0; }
     .filter-group label{ font-size:10.5px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.03em; }
     .filter-select{
-      padding:7px 11px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text);
-      font-size:12.5px; font-family:inherit; width:140px; max-width:140px; text-overflow:ellipsis;
+      box-sizing:border-box; width:100%; padding:7px 11px; border-radius:8px; border:1px solid var(--border);
+      background:var(--surface); color:var(--text); font-size:12.5px; font-family:inherit; text-overflow:ellipsis;
     }
-    .search-box{ position:relative; flex:1; min-width:220px; max-width:420px; }
+    .search-box{ position:relative; width:100%; }
     .search-box input{
       width:100%; padding:11px 14px 11px 38px; border-radius:12px; border:1px solid var(--border);
       background:var(--surface); color:var(--text); font-size:14px; font-family:inherit;
@@ -1072,6 +1103,7 @@
     .role-btn{ padding:6px 14px; border-radius:9px; border:none; background:transparent; color:var(--text-muted); font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
     .role-btn.active{ background:var(--accent-soft); color:var(--accent); }
 
+    .upload-wrap{ display:flex; align-items:center; margin-left:auto; }
     .upload-btn{
       display:inline-flex; align-items:center; gap:6px;
       padding:7px 13px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2);
@@ -1079,30 +1111,34 @@
     }
     .upload-btn:hover{ background:var(--surface-3); }
     .upload-status{ font-size:11.5px; color:var(--text-faint); }
+    .upload-status:not(:empty){ margin-left:8px; }
 
     .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
     @media (max-width:720px){ .stat-row{ grid-template-columns:repeat(2,1fr); } }
     .stat{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
     .stat .label{ font-size:12px; color:var(--text-faint); }
-    .stat .num{ font-size:22px; font-weight:700; margin-top:4px; }
+    .stat .num{ font-size:22px; font-weight:700; margin-top:4px; white-space:nowrap; }
     .stat .num.warn{ color:var(--warn); }
     .stat .num.ok{ color:var(--ok); }
     .stat .num.danger{ color:var(--danger); }
+    @media (max-width:420px){ .stat{ padding:12px 10px; } .stat .num{ font-size:15px; } }
     .stat .num.info{ color:var(--accent); }
 
     .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); }
     .panel-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
     .panel-head h2{ margin:0; font-size:15px; font-weight:700; }
 
-    .tabs{ display:flex; gap:6px; }
-    .tab{ padding:7px 13px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-muted); font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .revenue-toolbar{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; width:100%; min-width:0; }
+    .tabs{ display:flex; gap:6px; overflow-x:auto; max-width:100%; min-width:0; -webkit-overflow-scrolling:touch; }
+    .tab{ flex:none; white-space:nowrap; padding:7px 13px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-muted); font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
     .tab.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
 
     .brand-filter{ padding:7px 11px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12.5px; font-family:inherit; }
 
+    .table-scroll{ overflow-x:auto; }
     table{ width:100%; border-collapse:collapse; font-size:13.5px; }
-    thead th{ text-align:left; padding:10px 18px; font-size:12px; font-weight:700; color:var(--text-faint); border-bottom:1px solid var(--border); }
-    tbody td{ padding:11px 18px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    thead th{ text-align:left; padding:10px 18px; font-size:12px; font-weight:700; color:var(--text-faint); border-bottom:1px solid var(--border); white-space:nowrap; }
+    tbody td{ padding:11px 18px; border-bottom:1px solid var(--border); vertical-align:middle; white-space:nowrap; }
     tbody tr:last-child td{ border-bottom:none; }
     tbody tr:hover{ background:var(--surface-2); }
     td.amount{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-weight:600; text-align:right; }
@@ -1172,8 +1208,8 @@
       color:var(--accent); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
     }
     table.target-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
-    table.target-table th{ text-align:left; padding:8px 4px; font-size:12px; font-weight:700; color:var(--text-faint); border-bottom:1px solid var(--border); }
-    table.target-table td{ padding:9px 4px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    table.target-table th{ text-align:left; padding:8px 4px; font-size:12px; font-weight:700; color:var(--text-faint); border-bottom:1px solid var(--border); white-space:nowrap; }
+    table.target-table td{ padding:9px 4px; border-bottom:1px solid var(--border); vertical-align:middle; white-space:nowrap; }
     table.target-table tr:last-child td{ border-bottom:none; }
     .target-progress-wrap{ display:flex; align-items:center; gap:8px; min-width:140px; }
     .target-progress-wrap .bar-track{ flex:1; height:8px; }
@@ -1245,9 +1281,10 @@
     .dot-peak{ fill:var(--warning); stroke:var(--surface); stroke-width:2; }
     .tooltip-rect{ fill:var(--text); opacity:0; }
 
+    .table-scroll{ overflow-x:auto; }
     table.data-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
-    table.data-table th{ text-align:left; padding:7px 8px; font-size:12px; font-weight:700; color:var(--text-faint); border-bottom:1px solid var(--border); }
-    table.data-table td{ padding:7px 8px; border-bottom:1px solid var(--border); }
+    table.data-table th{ text-align:left; padding:7px 8px; font-size:12px; font-weight:700; color:var(--text-faint); border-bottom:1px solid var(--border); white-space:nowrap; }
+    table.data-table td{ padding:7px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
     table.data-table tr:last-child td{ border-bottom:none; }
     table.data-table td.num{ font-family:'IBM Plex Mono',monospace; text-align:right; }
     table.data-table td.muted{ color:var(--text-faint); }
@@ -1303,9 +1340,9 @@
 
     const REP_COLORS = {
       '이현재': '#5b9dff',
-      '박성준': '#3ac8c8',
-      '이재홍': '#e0b256',
-      '김가원': '#f35e52',
+      '박성중': '#3ac8c8',
+      '이재황': '#e0b256',
+      '김선우': '#f35e52',
     };
     const REP_NAMES = Object.keys(REP_COLORS);
     function repColor(op){ return REP_COLORS[op] || REP_COLORS[REP_NAMES[0]]; }
@@ -1314,18 +1351,18 @@
     function formatQty(qty){ return String(qty); }
 
     const rawEvents = [
-      { offset:-4, time:'09:00', client:'PB 프리미엄시즌 이촌점', task:'신규 일회용', material:'금속', category:[], qty:8, op:'김가원', solo:false, done:true },
-      { offset:-3, time:'11:00', client:'K2 브랜드 대구달서 목재점', task:'진열대 리뉴얼', material:'목재', category:[], qty:20, op:'이재홍', solo:false, done:true },
-      { offset:-1, time:'14:00', client:'BK 파리바게트 한국점', task:'진열 세팅', material:'목재', category:[], qty:'단품', op:'박성준', solo:true, done:false },
-      { offset:0, time:'10:00', client:'ND 미디어베이커리 본점', task:'빙수차단 진열대', material:'금속', category:[], qty:5, op:'이현재', solo:true, done:false },
-      { offset:0, time:'11:00', client:'CG 카페드파리마르 신촌점', task:'테이핑, 몰딩', material:'목재', category:['디자인스튜디오'], qty:60, op:'박성준', solo:false, done:false },
-      { offset:0, time:'16:00', client:'CG 카페드파리마르 신촌점', task:'대장 일회용', material:'금속', category:[], qty:20, op:'김가원', solo:false, done:false },
-      { offset:2, time:'09:30', client:'KK 라파리시대빵 강남점', task:'우드프레임', material:'목재', category:['공간디자인'], qty:10, op:'이재홍', solo:false, done:false },
-      { offset:4, time:'13:00', client:'K2 브랜드 대전 산척점', task:'진열대 3type', material:'목재', category:[], qty:20, op:'김가원', solo:false, done:false },
-      { offset:6, time:'11:00', client:'K2 브랜드 대전 강남점', task:'진열대 3type', material:'목재', category:[], qty:200, op:'이현재', solo:false, done:false },
-      { offset:9, time:'10:00', client:'PB 프리미엄시즌 동대구역점', task:'대형 일회용 세트', material:'금속', category:[], qty:100, op:'박성준', solo:false, done:false },
-      { offset:13, time:'14:00', client:'BK 파리바게트 부천점', task:'진열 세팅', material:'목재', category:[], qty:'단품', op:'박성준', solo:true, done:false },
-      { offset:18, time:'10:00', client:'CG 카페드파리마르 여의도점', task:'대장 일회용', material:'금속', category:[], qty:300, op:'김가원', solo:false, done:false },
+      { offset:-4, time:'09:00', client:'PB 파리바게트 이수점', task:'제과 쇼케이스', material:'금속', category:[], qty:8, op:'김선우', solo:false, done:true },
+      { offset:-3, time:'11:00', client:'K2 브레드가든 목동점', task:'진열대 리뉴얼', material:'목재', category:[], qty:20, op:'이재황', solo:false, done:true },
+      { offset:-1, time:'14:00', client:'BK 하늘제과 판교점', task:'진열 선반', material:'목재', category:[], qty:'단납', op:'박성중', solo:true, done:false },
+      { offset:0, time:'10:00', client:'ND 미도인베이커리 본점', task:'비말차단 진열대', material:'금속', category:[], qty:5, op:'이현재', solo:true, done:false },
+      { offset:0, time:'11:00', client:'CG 카페드마르쉐 잠실점', task:'도어틀, 몰딩', material:'목재', category:['디자인에너지'], qty:60, op:'박성중', solo:false, done:false },
+      { offset:0, time:'16:00', client:'CG 카페드마르쉐 잠실점', task:'냉장 쇼케이스', material:'금속', category:[], qty:20, op:'김선우', solo:false, done:false },
+      { offset:2, time:'09:30', client:'KK 라뜰리에드빵 강남점', task:'우드프레임', material:'목재', category:['공간디자인'], qty:10, op:'이재황', solo:false, done:false },
+      { offset:4, time:'13:00', client:'K2 브레드팜 송파점', task:'진열대 3type', material:'목재', category:[], qty:20, op:'김선우', solo:false, done:false },
+      { offset:6, time:'11:00', client:'K2 브레드팜 강남점', task:'진열대 3type', material:'목재', category:[], qty:200, op:'이현재', solo:false, done:false },
+      { offset:9, time:'10:00', client:'PB 파리바게트 대전역점', task:'대형 쇼케이스 세트', material:'금속', category:[], qty:100, op:'박성중', solo:false, done:false },
+      { offset:13, time:'14:00', client:'BK 하늘제과 분당점', task:'진열 선반', material:'목재', category:[], qty:'단납', op:'박성중', solo:true, done:false },
+      { offset:18, time:'10:00', client:'CG 카페드마르쉐 수원점', task:'냉장 쇼케이스', material:'금속', category:[], qty:300, op:'김선우', solo:false, done:false },
     ];
 
     const events = {};
@@ -1485,8 +1522,8 @@
               </div>
               <div class="ev-edit-grid">
                 <div class="ev-edit-field"><label>날짜</label><input type="date" class="e-date" value="${ymd(ev.due)}"></div>
-                <div class="ev-edit-field"><label>시간</label><input type="time" class="e-time" value="${ev.time}"></div>
-                <div class="ev-edit-field full"><label>작업내용</label><input type="text" class="e-task" value="${ev.task || ''}" placeholder="메모 항목"></div>
+                <div class="ev-edit-field"><label>시각</label><input type="time" class="e-time" value="${ev.time}"></div>
+                <div class="ev-edit-field full"><label>작업내용</label><input type="text" class="e-task" value="${ev.task || ''}" placeholder="납품 품목"></div>
                 <div class="ev-edit-field"><label>재질</label>
                   <select class="e-material">
                     <option value="금속"${ev.material==='금속'?' selected':''}>금속</option>
@@ -1496,7 +1533,7 @@
                 <div class="ev-edit-field"><label>작업량</label>
                   <select class="e-qty">
                     ${QTY_OPTIONS.map(q => `<option value="${q}"${String(ev.qty)===String(q)?' selected':''}>${q}</option>`).join('')}
-                    <option value="단품"${ev.qty==='단품'?' selected':''}>단품</option>
+                    <option value="단납"${ev.qty==='단납'?' selected':''}>단납</option>
                   </select>
                 </div>
                 <div class="ev-edit-field"><label>담당자</label>
@@ -1528,7 +1565,7 @@
               ev.task = card.querySelector('.e-task').value.trim();
               ev.material = card.querySelector('.e-material').value;
               const qtyRaw = card.querySelector('.e-qty').value;
-              ev.qty = qtyRaw === '단품' ? '단품' : Number(qtyRaw);
+              ev.qty = qtyRaw === '단납' ? '단납' : Number(qtyRaw);
               ev.op = card.querySelector('.e-op').value;
               if (newDateStr && newDateStr !== ymd(ev.due)) {
                 removeEventFromEvents(ev);
@@ -1628,21 +1665,21 @@
      ========================================================= */
   function initSalesPage(root, appRole){
     const orders = [
-      { brand:'프리미엄담', client:'프리미엄담', store:'압구정도산파크점', rep:'이재홍', orderDate:'08/15', urgent:false, next:'—', amount:8200000 },
-      { brand:'프리미엄담', client:'프리미엄담', store:'서울역구내점', rep:'이재홍', orderDate:'08/18', urgent:false, next:'09/08 설치', amount:6400000 },
-      { brand:'프리미엄담산악맹', client:'프리포라제', store:'강남고속점', rep:'이재홍', orderDate:'08/19', urgent:false, next:'09/10 설치', amount:5100000 },
-      { brand:'긴가원팀', client:'화이트클', store:'거제점', rep:'이현재', orderDate:'08/20', urgent:false, next:'09/05 설치', amount:3200000 },
-      { brand:'긴가원팀', client:'긴가원팀', store:'롯데점세점', rep:'이현재', orderDate:'08/20', urgent:true, next:'09/08 설치', amount:9800000 },
-      { brand:'긴가원팀', client:'긴가원팀', store:'구미점 외 5매장', rep:'이현재', orderDate:'08/22', urgent:false, next:'09/04 설치', amount:14500000 },
-      { brand:'기타', client:'화이트클', store:'쿠팡 천호8FC', rep:'이현재', orderDate:'08/26', urgent:false, next:'09/09 설치', amount:2100000 },
-      { brand:'K2', client:'본사', store:'전지세대상 신촌점', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/11 설치', amount:4300000 },
-      { brand:'K2', client:'우리가맹점', store:'모다맹상 경주점', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/03 설치', amount:1800000 },
-      { brand:'기타', client:'화이트클', store:'일락르브 롯데아울렛 가구이버', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/03 설치', amount:2600000 },
-      { brand:'PC', client:'PC', store:'청담토즈흡점 가구이든', rep:'이재홍', orderDate:'09/02', urgent:false, next:'09/28 설치', amount:900000 },
+      { brand:'파리바게뜨', client:'파리바게뜨', store:'송도랜드마크시티점', rep:'이재황', orderDate:'08/15', urgent:false, next:'—', amount:8200000 },
+      { brand:'파리바게뜨', client:'파리바게뜨', store:'수원아너스빌위즈점', rep:'이재황', orderDate:'08/18', urgent:false, next:'09/08 설치', amount:6400000 },
+      { brand:'파리바게뜨위탁가맹', client:'파리크라상', store:'강동강일점', rep:'이재황', orderDate:'08/19', urgent:false, next:'09/10 설치', amount:5100000 },
+      { brand:'금강제화', client:'큐앤플랜', store:'거제점', rep:'이현재', orderDate:'08/20', urgent:false, next:'09/05 설치', amount:3200000 },
+      { brand:'금강제화', client:'금강제화', store:'롯데잠실점', rep:'이현재', orderDate:'08/20', urgent:true, next:'09/08 설치', amount:9800000 },
+      { brand:'금강제화', client:'금강제화', store:'구미점 외 5매장', rep:'이현재', orderDate:'08/22', urgent:false, next:'09/04 설치', amount:14500000 },
+      { brand:'기타', client:'디엔아이', store:'쿠팡 천안8FC', rep:'이현재', orderDate:'08/26', urgent:false, next:'09/09 설치', amount:2100000 },
+      { brand:'K2', client:'본사', store:'신세계아울렛시흥점', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/11 설치', amount:4300000 },
+      { brand:'K2', client:'우리가디자인', store:'모다아울렛경주점', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/03 설치', amount:1800000 },
+      { brand:'기타', client:'디엔아이', store:'일뽀르노 롯데월드몰점 가구', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/03 설치', amount:2600000 },
+      { brand:'PC', client:'PC', store:'청담퀸즈파크점 가구이동', rep:'이재황', orderDate:'09/02', urgent:false, next:'09/28 설치', amount:900000 },
       { brand:'도무스', client:'도무스', store:'추석연휴', rep:'시스템관리자', orderDate:'09/03', urgent:false, next:'09/24 휴무', amount:null },
     ];
     orders.forEach((o, i) => { o.id = i; });
-    const REP_OPTIONS = ['이현재', '박성준', '이재홍', '김가원', '시스템관리자'];
+    const REP_OPTIONS = ['이현재', '박성중', '이재황', '김선우', '시스템관리자'];
     let editingId = null;
 
     let role = appRole === 'owner' ? 'owner' : 'staff';
@@ -1658,7 +1695,7 @@
       [...root.querySelectorAll('.role-btn')].forEach(b => b.classList.toggle('active', b.dataset.role === role));
     }
 
-    // 주문일(orderDate)이 "MM/DD" 형식이라 "기간" 필터도 월 단위로 제공한다.
+    // 수주일(orderDate)은 "MM/DD" 형식이라 "기간" 필터는 월 단위로 제공한다.
     function monthOf(o){ return o.orderDate ? o.orderDate.slice(0,2) + '월' : ''; }
 
     function refreshFilterOptions(){
@@ -1779,9 +1816,9 @@
         </div>
         <div class="client-grid">
           <div class="client-block">
-            <h3>기본 정보</h3>
+            <h3>기본정보</h3>
             <div class="kv"><span class="k">담당자</span><span class="v">${rep.rep}</span></div>
-            <div class="kv"><span class="k">최근 주문일</span><span class="v">${rep.orderDate}</span></div>
+            <div class="kv"><span class="k">최근 수주일</span><span class="v">${rep.orderDate}</span></div>
             <div class="kv"><span class="k">전체 건수</span><span class="v">${history.length}건</span></div>
           </div>
           <div class="client-block">
@@ -1848,26 +1885,26 @@
      Order form init
      ========================================================= */
   function initOrderFormPage(root){
-    const STAFF = ['이현재', '박성준', '이재홍', '김가원'];
+    const STAFF = ['이현재', '박성중', '이재황', '김선우'];
 
-    const BRANDS = ['스타벅스','K2','프리미엄담','긴가원팀','노르디스크','커버넌트','BK','PC','다이나핏','CG','Lee','프리미엄담산악맹','아이더','모비스','PS','앤커버리','아이백스','배스파라비스','휠라쿠어','베이커리한토리','기타'];
+    const BRANDS = ['스타벅스','K2','파리바게뜨','금강제화','노르디스크','커버낫','BK','PC','다이나핏','CG','Lee','파리바게뜨위탁가맹','아이더','모비스','PS','와키윌리','쉐이크쉑','배스킨라빈스','파스쿠찌','베이커리팩토리','기타'];
     const CLIENTS = {
       'SB-본사': { contact:'', phone:'', interior:'', address:'' },
-      '화이트클': { contact:'', phone:'', interior:'', address:'' },
-      '프리미엄담': { contact:'백서지', phone:'02-2222-3333', interior:'', address:'' },
-      '키핑브': { contact:'', phone:'', interior:'', address:'' },
+      '디엔아이': { contact:'', phone:'', interior:'', address:'' },
+      '파리바게뜨': { contact:'백상진', phone:'02-2222-3333', interior:'', address:'' },
+      '키예노': { contact:'', phone:'', interior:'', address:'' },
       '공간디자인': { contact:'', phone:'', interior:'', address:'' },
-      '긴가원팀': { contact:'조서아', phone:'02-4444-5555', interior:'대한인테리어', address:'' },
-      '우리가맹점': { contact:'', phone:'', interior:'', address:'' },
-      '일립': { contact:'', phone:'', interior:'', address:'' },
-      '스타이스간': { contact:'', phone:'', interior:'', address:'' },
+      '금강제화': { contact:'조원석', phone:'02-4444-5555', interior:'대한인테리어', address:'' },
+      '우리가디자인': { contact:'', phone:'', interior:'', address:'' },
+      '삼립': { contact:'', phone:'', interior:'', address:'' },
+      '스페이스갬': { contact:'', phone:'', interior:'', address:'' },
       'PC': { contact:'', phone:'', interior:'', address:'' },
-      '비커밥': { contact:'', phone:'', interior:'', address:'' },
-      '디자인스튜디오': { contact:'', phone:'', interior:'', address:'' },
-      '화이트클': { contact:'', phone:'', interior:'', address:'' },
-      '프리포라제': { contact:'서배호', phone:'02-1234-5678', interior:'', address:'' },
-      '아이더이드뮤트': { contact:'', phone:'', interior:'', address:'' },
-      '아이플러스': { contact:'', phone:'', interior:'', address:'' },
+      '비커밍': { contact:'', phone:'', interior:'', address:'' },
+      '디자인에너지': { contact:'', phone:'', interior:'', address:'' },
+      '큐앤플랜': { contact:'', phone:'', interior:'', address:'' },
+      '파리크라상': { contact:'심배현', phone:'02-1234-5678', interior:'', address:'' },
+      '아이디어뮤토': { contact:'', phone:'', interior:'', address:'' },
+      '에이플러스': { contact:'', phone:'', interior:'', address:'' },
       '개인': { contact:'', phone:'', interior:'', address:'' },
     };
 
@@ -1880,7 +1917,7 @@
 
     root.getElementById('f-brand').addEventListener('input', (e) => {
       const v = e.target.value.trim();
-      root.getElementById('brandNewHint').textContent = (v && !BRANDS.includes(v)) ? '신 브랜드로 등록됩니다' : '';
+      root.getElementById('brandNewHint').textContent = (v && !BRANDS.includes(v)) ? '새 브랜드로 등록됩니다' : '';
     });
 
     root.getElementById('f-client').addEventListener('input', (e) => {
@@ -1888,7 +1925,7 @@
       const hint = root.getElementById('clientNewHint');
       const known = CLIENTS[v];
       if (!v) { hint.textContent = ''; return; }
-      if (!known) { hint.textContent = '신 발주처로 등록됩니다'; return; }
+      if (!known) { hint.textContent = '새 발주처로 등록됩니다'; return; }
       hint.textContent = '';
       root.getElementById('f-clientcontact').value = known.contact || '';
       root.getElementById('f-clientphone').value = known.phone || '';
@@ -1931,8 +1968,8 @@
       row.innerHTML = `
         <div class="task-grid">
           <div class="field"><label>날짜</label><input type="date"></div>
-          <div class="field"><label>시간</label><input type="time"></div>
-          <div class="field task-full"><label>작업내용</label><input class="task-desc" placeholder="메모 항목"></div>
+          <div class="field"><label>시각</label><input type="time"></div>
+          <div class="field task-full"><label>작업내용</label><input class="task-desc" placeholder="납품 품목"></div>
           <div class="field task-full">
             <label>작업량</label>
             <select class="qty-select">
@@ -1941,8 +1978,8 @@
               <option value="60">60</option><option value="70">70</option><option value="80">80</option>
               <option value="90">90</option><option value="100">100</option><option value="150">150</option>
               <option value="200">200</option><option value="300">300</option>
-              <option value="단품">단품</option>
-              <option value="custom">직접 입력...</option>
+              <option value="단납">단납</option>
+              <option value="custom">직접입력...</option>
             </select>
             <input type="number" class="qty-custom" placeholder="작업량 직접 입력" style="display:none; margin-top:6px;">
           </div>
@@ -1967,7 +2004,7 @@
       if (!root.getElementById('f-client').value.trim()) missing.push('발주처');
       if (!root.getElementById('f-store').value.trim()) missing.push('점포명');
       if (!repSelect.value) missing.push('담당자');
-      if (!root.getElementById('f-orderdate').value) missing.push('주문일');
+      if (!root.getElementById('f-orderdate').value) missing.push('수주일');
       if (missing.length) {
         alert(`다음 항목을 입력해주세요: ${missing.join(', ')}`);
         return;
@@ -1988,13 +2025,13 @@
     today.setHours(0,0,0,0);
 
     const rawTasks = [
-      { offset:0, time:'09:00', client:'ND 미디어베이커리 본점', type:'메모', task:'빙수차단 진열대 메모', qty:5, op:'최민석', done:false },
-      { offset:0, time:'10:30', client:'CG 카페드파리마르 신촌점', type:'배송', task:'테이핑, 몰딩 배송', qty:10, op:'박성준', done:false },
-      { offset:0, time:'13:00', client:'K2 브랜드 대전 강남점', type:'메모', task:'진열대 3type 배송', qty:20, op:'김도현', done:true },
-      { offset:0, time:'16:00', client:'CG 카페드파리마르 신촌점', type:'메모', task:'대장 일회용 메모', qty:20, op:'최민석', done:false },
-      { offset:1, time:'09:30', client:'KK 라파리시대빵 강남점', type:'배송', task:'우드프레임 배송', qty:10, op:'박정호', done:false },
-      { offset:1, time:'13:00', client:'K2 브랜드 대전 산척점', type:'메모', task:'진열대 3type 메모', qty:30, op:'최민석', done:false },
-      { offset:2, time:'11:00', client:'K2 브랜드 대전 강남점', type:'메모', task:'진열대 3type 배송', qty:100, op:'김도현', done:false },
+      { offset:0, time:'09:00', client:'ND 미도인베이커리 본점', type:'납품', task:'비말차단 진열대 납품', qty:5, op:'최민서', done:false },
+      { offset:0, time:'10:30', client:'CG 카페드마르쉐 잠실점', type:'배송', task:'도어틀, 몰딩 배송', qty:10, op:'박성중', done:false },
+      { offset:0, time:'13:00', client:'K2 브레드팜 강남점', type:'납품', task:'진열대 3type 배송', qty:20, op:'김도현', done:true },
+      { offset:0, time:'16:00', client:'CG 카페드마르쉐 잠실점', type:'납품', task:'냉장 쇼케이스 납품', qty:20, op:'최민서', done:false },
+      { offset:1, time:'09:30', client:'KK 라뜰리에드빵 강남점', type:'배송', task:'우드프레임 배송', qty:10, op:'박지훈', done:false },
+      { offset:1, time:'13:00', client:'K2 브레드팜 송파점', type:'납품', task:'진열대 3type 납품', qty:30, op:'최민서', done:false },
+      { offset:2, time:'11:00', client:'K2 브레드팜 강남점', type:'납품', task:'진열대 3type 배송', qty:100, op:'김도현', done:false },
     ];
 
     const tasksByDay = {};
@@ -2075,19 +2112,19 @@
     const pad2 = n => String(n).padStart(2,'0');
     const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 
-    const REP_LIST = ['이현재', '박성준', '이재홍', '김가원'];
+    const REP_LIST = ['이현재', '박성중', '이재황', '김선우'];
 
     const rawRevenue = [
-      { date:'2026-09-01', brand:'프리미엄담', client:'프리포라제', store:'이촌점', rep:'김가원', amount:5200000, confirmed:true, paid:true },
-      { date:'2026-09-02', brand:'K2', client:'K2', store:'브랜드 대전 강남점', rep:'이현재', amount:3100000, confirmed:true, paid:false },
-      { date:'2026-09-03', brand:'스타벅스', client:'SB-본사', store:'신촌점', rep:'박성준', amount:8600000, confirmed:false, paid:false },
-      { date:'2026-08-20', brand:'CG', client:'디자인스튜디오', store:'카페드파리마르 신촌점', rep:'이재홍', amount:2400000, confirmed:true, paid:true },
-      { date:'2026-08-15', brand:'긴가원팀', client:'긴가원팀', store:'동대구역점', rep:'이현재', amount:4500000, confirmed:true, paid:false },
-      { date:'2026-08-05', brand:'BK', client:'개인', store:'한국점', rep:'김가원', amount:1800000, confirmed:true, paid:true },
-      { date:'2026-07-28', brand:'K2', client:'K2', store:'브랜드 대전 산척점', rep:'이현재', amount:3100000, confirmed:true, paid:true },
-      { date:'2026-07-11', brand:'프리미엄담', client:'프리포라제', store:'동대구역점', rep:'김가원', amount:9000000, confirmed:true, paid:true },
-      { date:'2026-06-30', brand:'노르디스크', client:'비커밥', store:'성수점', rep:'박성준', amount:2200000, confirmed:true, paid:true },
-      { date:'2025-12-10', brand:'프리미엄담', client:'프리포라제', store:'여의도점', rep:'김가원', amount:6100000, confirmed:true, paid:true },
+      { date:'2026-09-01', brand:'파리바게뜨', client:'파리크라상', store:'이수점', rep:'김선우', amount:5200000, confirmed:true, paid:true },
+      { date:'2026-09-02', brand:'K2', client:'K2', store:'브레드팜 강남점', rep:'이현재', amount:3100000, confirmed:true, paid:false },
+      { date:'2026-09-03', brand:'스타벅스', client:'SB-본사', store:'잠실점', rep:'박성중', amount:8600000, confirmed:false, paid:false },
+      { date:'2026-08-20', brand:'CG', client:'디자인에너지', store:'카페드마르쉐 잠실점', rep:'이재황', amount:2400000, confirmed:true, paid:true },
+      { date:'2026-08-15', brand:'금강제화', client:'금강제화', store:'대전역점', rep:'이현재', amount:4500000, confirmed:true, paid:false },
+      { date:'2026-08-05', brand:'BK', client:'개인', store:'판교점', rep:'김선우', amount:1800000, confirmed:true, paid:true },
+      { date:'2026-07-28', brand:'K2', client:'K2', store:'브레드팜 송파점', rep:'이현재', amount:3100000, confirmed:true, paid:true },
+      { date:'2026-07-11', brand:'파리바게뜨', client:'파리크라상', store:'대전역점', rep:'김선우', amount:9000000, confirmed:true, paid:true },
+      { date:'2026-06-30', brand:'노르디스크', client:'비커밍', store:'성수점', rep:'박성중', amount:2200000, confirmed:true, paid:true },
+      { date:'2025-12-10', brand:'파리바게뜨', client:'파리크라상', store:'수원점', rep:'김선우', amount:6100000, confirmed:true, paid:true },
     ].map((r, i) => ({ ...r, id: i }));
 
     let revenueTargets = [
@@ -2177,7 +2214,7 @@
           };
           const toBool = (v) => {
             const s = String(v).trim();
-            return ['O','o','Y','y','완료','발송','입금','예','true','1'].includes(s);
+            return ['O','o','Y','y','완료','발행','입금','예','true','1'].includes(s);
           };
 
           let added = 0;
@@ -2186,10 +2223,10 @@
             const brand = pick(row, ['브랜드']);
             const client = pick(row, ['발주처','거래처']);
             const store = pick(row, ['점포','매장']);
-            const dateRaw = pick(row, ['SET일','일자','날짜','입금일','청구일']);
-            const amountRaw = pick(row, ['청구 금액','견적 금액','금액']);
-            const confirmedRaw = pick(row, ['확인','발송']);
-            const paidRaw = pick(row, ['입금','입금']);
+            const dateRaw = pick(row, ['SET일','일자','날짜','수금일','확정일']);
+            const amountRaw = pick(row, ['확정금액','견적금액','금액']);
+            const confirmedRaw = pick(row, ['확인','발행']);
+            const paidRaw = pick(row, ['수금','입금']);
             const repRaw = pick(row, ['담당자','영업사원','담당']);
             if (!brand && !client && !store && !amountRaw) return;
             rawRevenue.push({
@@ -2226,7 +2263,7 @@
       render();
     });
 
-    const PERIOD_LABEL = { month:'월별', quarter:'분기별', year:'연도별', brand:'브랜드별', client:'발주처별' };
+    const PERIOD_LABEL = { month:'월별', quarter:'분기별', year:'년도별', brand:'브랜드별', client:'발주처별' };
 
     function groupKey(r){
       if (period === 'month') return r.date.slice(0,7);
@@ -2261,7 +2298,7 @@
       const unpaid = list.filter(r => r.confirmed && !r.paid).reduce((s,r) => s + r.amount, 0);
       const unconfirmed = list.filter(r => !r.confirmed).length;
 
-      root.getElementById('periodLabel').textContent = `${PERIOD_LABEL[period]} 전체 청구 금액`;
+      root.getElementById('periodLabel').textContent = `${PERIOD_LABEL[period]} 전체 확정금액`;
       root.getElementById('statTotal').textContent = maskWon(total);
       root.getElementById('statPaid').textContent = maskWon(paid);
       root.getElementById('statUnpaid').textContent = maskWon(unpaid);
@@ -2527,16 +2564,16 @@
      Analytics page init (owner-only view content; static data)
      ========================================================= */
   function initAnalyticsPage(root){
-    const DATA = {"kpi": {"totalOrders": 908, "uniqueClients": 33, "uniqueBrands": 33, "avg2025": 41.1, "avg2026": 46.1, "growthPct": 12.2, "top4SharePct": 47.5, "top10SharePct": 80.0}, "monthly": [{"month": "2025-01", "count": 31}, {"month": "2025-02", "count": 46}, {"month": "2025-03", "count": 53}, {"month": "2025-04", "count": 32}, {"month": "2025-05", "count": 33}, {"month": "2025-06", "count": 49}, {"month": "2025-07", "count": 50}, {"month": "2025-08", "count": 68}, {"month": "2025-09", "count": 33}, {"month": "2025-10", "count": 34}, {"month": "2025-11", "count": 32}, {"month": "2025-12", "count": 32}, {"month": "2026-01", "count": 47}, {"month": "2026-02", "count": 52}, {"month": "2026-03", "count": 86}, {"month": "2026-04", "count": 42}, {"month": "2026-05", "count": 25}, {"month": "2026-06", "count": 40}, {"month": "2026-07", "count": 72}, {"month": "2026-08", "count": 40}, {"month": "2026-09", "count": 11}], "pareto": [{"name": "화이트클", "count": 107, "pct": 15.5, "cumPct": 15.5}, {"name": "프리미엄담", "count": 86, "pct": 12.5, "cumPct": 28.0}, {"name": "SB-본사", "count": 80, "pct": 11.6, "cumPct": 39.6}, {"name": "키핑브", "count": 55, "pct": 8.0, "cumPct": 47.5}, {"name": "공간디자인", "count": 53, "pct": 7.7, "cumPct": 55.2}, {"name": "긴가원팀", "count": 51, "pct": 7.4, "cumPct": 62.6}, {"name": "우리가맹점", "count": 42, "pct": 6.1, "cumPct": 68.7}, {"name": "일립", "count": 29, "pct": 4.2, "cumPct": 72.9}, {"name": "스타이스간", "count": 27, "pct": 3.9, "cumPct": 76.8}, {"name": "본사", "count": 22, "pct": 3.2, "cumPct": 80.0}, {"name": "금속", "count": 22, "pct": 3.2, "cumPct": 83.2}, {"name": "PC", "count": 21, "pct": 3.0, "cumPct": 86.2}], "brand": [{"code": "K2", "count": 121, "rushPct": 0.0}, {"code": "-", "count": 100, "rushPct": 0.0}, {"code": "PB", "count": 86, "rushPct": 1.2}, {"code": "SB", "count": 80, "rushPct": 52.5}, {"code": "KK", "count": 51, "rushPct": 2.0}, {"code": "ND", "count": 41, "rushPct": 0.0}, {"code": "커버넌트", "count": 36, "rushPct": 13.9}, {"code": "BK", "count": 25, "rushPct": 0.0}, {"code": "금속", "count": 22, "rushPct": 100.0}, {"code": "PC", "count": 18, "rushPct": 0.0}], "rep": [{"name": "이현재", "count": 404, "rushPct": 3.2}, {"name": "박성준", "count": 313, "rushPct": 59.4}, {"name": "이재홍", "count": 110, "rushPct": 5.5}, {"name": "김가원", "count": 62, "rushPct": 17.7}, {"name": "황성철", "count": 16, "rushPct": 0.0}, {"name": "시스템관리자", "count": 3, "rushPct": 100.0}], "weekday": [{"day": "월", "count": 142}, {"day": "화", "count": 141}, {"day": "수", "count": 158}, {"day": "목", "count": 162}, {"day": "금", "count": 169}, {"day": "토", "count": 93}, {"day": "일", "count": 43}], "pipeline": [{"brand": "커버넌트", "client": "공간디자인", "store": "화이트클랑 신촌점-몰딩배송", "rep": "박성준", "date": "2026-08-12"}, {"brand": "긴가원팀", "client": "긴가원팀", "store": "광주점(사은상건)", "rep": "이현재", "date": "2026-07-01"}, {"brand": "PC", "client": "PC", "store": "이색이상비", "rep": "이재홍", "date": "2026-03-16"}, {"brand": "BK", "client": "일립", "store": "롯데점 히트레 신촌점", "rep": "이재홍", "date": "2026-03-16"}, {"brand": "프리미엄담", "client": "프리미엄담", "store": "향남부산사래점", "rep": "황성철", "date": "2026-01-16"}, {"brand": "프리미엄담", "client": "프리미엄담", "store": "산천역", "rep": "황성철", "date": "2025-12-04"}, {"brand": "긴가원팀", "client": "긴가원팀", "store": "광주점 학거메모", "rep": "이현재", "date": "2025-12-18"}, {"brand": "프리미엄담", "client": "프리미엄담", "store": "브랜지2호점", "rep": "황성철", "date": "2025-12-01"}], "urgent": [{"brand": "긴가원팀", "client": "긴가원팀", "store": "롯데부산본점 추가", "rep": "이현재", "date": "2026-08-21"}, {"brand": "긴가원팀", "client": "긴가원팀", "store": "롯데부산본점", "rep": "이현재", "date": "2026-07-31"}, {"brand": "배스파라비스", "client": "BR", "store": "브랜지점-이초", "rep": "박성준", "date": "2026-03-30"}, {"brand": "K2", "client": "우리가맹점", "store": "대구광장점", "rep": "이현재", "date": "2025-08-11"}]};
+    const DATA = {"kpi": {"totalOrders": 908, "uniqueClients": 33, "uniqueBrands": 33, "avg2025": 41.1, "avg2026": 46.1, "growthPct": 12.2, "top4SharePct": 47.5, "top10SharePct": 80.0}, "monthly": [{"month": "2025-01", "count": 31}, {"month": "2025-02", "count": 46}, {"month": "2025-03", "count": 53}, {"month": "2025-04", "count": 32}, {"month": "2025-05", "count": 33}, {"month": "2025-06", "count": 49}, {"month": "2025-07", "count": 50}, {"month": "2025-08", "count": 68}, {"month": "2025-09", "count": 33}, {"month": "2025-10", "count": 34}, {"month": "2025-11", "count": 32}, {"month": "2025-12", "count": 32}, {"month": "2026-01", "count": 47}, {"month": "2026-02", "count": 52}, {"month": "2026-03", "count": 86}, {"month": "2026-04", "count": 42}, {"month": "2026-05", "count": 25}, {"month": "2026-06", "count": 40}, {"month": "2026-07", "count": 72}, {"month": "2026-08", "count": 40}, {"month": "2026-09", "count": 11}], "pareto": [{"name": "디엔아이", "count": 107, "pct": 15.5, "cumPct": 15.5}, {"name": "파리바게뜨", "count": 86, "pct": 12.5, "cumPct": 28.0}, {"name": "SB-본사", "count": 80, "pct": 11.6, "cumPct": 39.6}, {"name": "키예노", "count": 55, "pct": 8.0, "cumPct": 47.5}, {"name": "공간디자인", "count": 53, "pct": 7.7, "cumPct": 55.2}, {"name": "금강제화", "count": 51, "pct": 7.4, "cumPct": 62.6}, {"name": "우리가디자인", "count": 42, "pct": 6.1, "cumPct": 68.7}, {"name": "삼립", "count": 29, "pct": 4.2, "cumPct": 72.9}, {"name": "스페이스갬", "count": 27, "pct": 3.9, "cumPct": 76.8}, {"name": "본사", "count": 22, "pct": 3.2, "cumPct": 80.0}, {"name": "금속", "count": 22, "pct": 3.2, "cumPct": 83.2}, {"name": "PC", "count": 21, "pct": 3.0, "cumPct": 86.2}], "brand": [{"code": "K2", "count": 121, "rushPct": 0.0}, {"code": "-", "count": 100, "rushPct": 0.0}, {"code": "PB", "count": 86, "rushPct": 1.2}, {"code": "SB", "count": 80, "rushPct": 52.5}, {"code": "KK", "count": 51, "rushPct": 2.0}, {"code": "ND", "count": 41, "rushPct": 0.0}, {"code": "커버낫", "count": 36, "rushPct": 13.9}, {"code": "BK", "count": 25, "rushPct": 0.0}, {"code": "금속", "count": 22, "rushPct": 100.0}, {"code": "PC", "count": 18, "rushPct": 0.0}], "rep": [{"name": "이현재", "count": 404, "rushPct": 3.2}, {"name": "박성중", "count": 313, "rushPct": 59.4}, {"name": "이재황", "count": 110, "rushPct": 5.5}, {"name": "김선우", "count": 62, "rushPct": 17.7}, {"name": "황성철", "count": 16, "rushPct": 0.0}, {"name": "시스템관리자", "count": 3, "rushPct": 100.0}], "weekday": [{"day": "월", "count": 142}, {"day": "화", "count": 141}, {"day": "수", "count": 158}, {"day": "목", "count": 162}, {"day": "금", "count": 169}, {"day": "토", "count": 93}, {"day": "일", "count": 43}], "pipeline": [{"brand": "커버낫", "client": "공간디자인", "store": "현대아울렛 대전점-몰딩배송", "rep": "박성중", "date": "2026-08-12"}, {"brand": "금강제화", "client": "금강제화", "store": "광주점(재도장건)", "rep": "이현재", "date": "2026-07-01"}, {"brand": "PC", "client": "PC", "store": "예술의전당", "rep": "이재황", "date": "2026-03-16"}, {"brand": "BK", "client": "삼립", "store": "롯데제타플렉스잠실", "rep": "이재황", "date": "2026-03-16"}, {"brand": "파리바게뜨", "client": "파리바게뜨", "store": "향남부영사랑점", "rep": "황성철", "date": "2026-01-16"}, {"brand": "파리바게뜨", "client": "파리바게뜨", "store": "연천역", "rep": "황성철", "date": "2025-12-04"}, {"brand": "금강제화", "client": "금강제화", "store": "광주점 행거납품", "rep": "이현재", "date": "2025-12-18"}, {"brand": "파리바게뜨", "client": "파리바게뜨", "store": "노량진2호점", "rep": "황성철", "date": "2025-12-01"}], "urgent": [{"brand": "금강제화", "client": "금강제화", "store": "롯데부산본점 추가", "rep": "이현재", "date": "2026-08-21"}, {"brand": "금강제화", "client": "금강제화", "store": "롯데부산본점", "rep": "이현재", "date": "2026-07-31"}, {"brand": "배스킨라빈스", "client": "BR", "store": "노량진점-이원", "rep": "박성중", "date": "2026-03-30"}, {"brand": "K2", "client": "우리가디자인", "store": "대구광장점", "rep": "이현재", "date": "2025-08-11"}]};
 
     const won = n => n.toLocaleString('ko-KR');
 
     const kpiRow = root.getElementById('kpiRow');
     const kpis = [
-      { label: '전체 주문 건수', value: won(DATA.kpi.totalOrders) + '건', note: '2025-01 ~ 2026-09' },
+      { label: '전체 수주 건수', value: won(DATA.kpi.totalOrders) + '건', note: '2025-01 ~ 2026-09' },
       { label: '활성 발주처 수', value: DATA.kpi.uniqueClients + '곳', note: '' },
-      { label: '월평균 증가', value: `+${DATA.kpi.growthPct}%`, note: `'25 ${DATA.kpi.avg2025}건 → '26 ${DATA.kpi.avg2026}건`, up: true },
-      { label: '상위 4곳 비중', value: DATA.kpi.top4SharePct + '%', note: '화이트클·프리미엄담·SB·키핑브' },
+      { label: '월평균 증감', value: `+${DATA.kpi.growthPct}%`, note: `'25 ${DATA.kpi.avg2025}건 → '26 ${DATA.kpi.avg2026}건`, up: true },
+      { label: '상위 4곳 비중', value: DATA.kpi.top4SharePct + '%', note: '디엔아이·파리바게뜨·SB·키예노' },
       { label: '상위 10곳 비중', value: DATA.kpi.top10SharePct + '%', note: '거래처 쏠림 매우 높음' },
       { label: '최다 담당자', value: DATA.rep[0].name, note: `${DATA.rep[0].count}건 (${(DATA.rep[0].count/DATA.kpi.totalOrders*100).toFixed(0)}%)` },
     ];
@@ -2619,7 +2656,7 @@
         svgHTML += `<text class="bar-name" x="${padL-8}" y="${yy+rowH/2+4}" text-anchor="end">${d.code}</text>`;
         svgHTML += `<rect class="bar-track" x="${padL}" y="${yy}" width="${W-padL-padR}" height="${rowH}" rx="4"/>`;
         svgHTML += `<rect class="bar" x="${padL}" y="${yy}" width="${Math.max(w,3)}" height="${rowH}" rx="4"/>`;
-        svgHTML += `<text class="bar-label" x="${padL + (W-padL-padR) + 8}" y="${yy+rowH/2+4}">${d.rushPct}% 단품 · ${d.count}건</text>`;
+        svgHTML += `<text class="bar-label" x="${padL + (W-padL-padR) + 8}" y="${yy+rowH/2+4}">${d.rushPct}% 단납 · ${d.count}건</text>`;
       });
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       svg.innerHTML = svgHTML;
@@ -2639,7 +2676,7 @@
         </tr>
       `).join('');
       root.getElementById('repTable').innerHTML = `
-        <thead><tr><th>담당자</th><th style="text-align:right">건수</th><th style="text-align:right">비중</th><th style="text-align:right">단품비율</th></tr></thead>
+        <thead><tr><th>담당자</th><th style="text-align:right">건수</th><th style="text-align:right">비중</th><th style="text-align:right">단납비율</th></tr></thead>
         <tbody>${rows}</tbody>
       `;
     })();
@@ -2670,12 +2707,12 @@
       });
       svg.innerHTML = svgHTML;
       root.getElementById('weekdayFoot').textContent =
-        `금요일이 ${data[maxIdx].count}건으로 가장 많고, 일요일이 가장 적음 — 인력 배치 참고 자료로 활용 가능`;
+        `금요일이 ${data[maxIdx].count}건으로 가장 많고, 일요일이 가장 적음 — 인력 배치 참고자료로 활용 가능`;
     })();
 
     function smallTable(rows){
       return `
-        <thead><tr><th>발주처</th><th>점포명</th><th>담당자</th><th>주문일</th></tr></thead>
+        <thead><tr><th>발주처</th><th>점포명</th><th>담당자</th><th>수주일</th></tr></thead>
         <tbody>${rows.map(r => `
           <tr><td>${r.client}</td><td class="muted">${r.store}</td><td>${r.rep}</td><td class="num">${r.date}</td></tr>
         `).join('')}</tbody>
@@ -2694,11 +2731,11 @@
       const quietestDay = [...DATA.weekday].sort((a,b) => a.count - b.count)[0];
 
       const points = [
-        `2026년 월평균 주문량은 ${DATA.kpi.avg2026}건으로, 2025년(${DATA.kpi.avg2025}건) 대비 <b>${DATA.kpi.growthPct}% 증가</b>했습니다.`,
-        `상위 4개 발주처가 전체 주문의 <b>${DATA.kpi.top4SharePct}%</b>를 차지하고 있어(1위 ${topClient.name} ${topClient.pct}%), 소수 거래처에 대한 의존도가 높은 편입니다.`,
-        `건수 기준으로는 <b>${topRepByCount.name}</b> 담당자가 ${topRepByCount.count}건으로 가장 많지만, ${highRushRep.name} 담당자는 단품(소수·비번 메모) 비율이 <b>${highRushRep.rushPct}%</b>로 높은 건수만으로는 드러나지 않는 실무 부담이 있을 수 있습니다.`,
-        `브랜드 중에서는 <b>${highRushBrand.code}</b>의 단품 비율이 ${highRushBrand.rushPct}%로 가장 높아, 다른 일관 메모 위주인 다른 브랜드와 업무 성격이 다릅니다.`,
-        `요일별로는 <b>${busiestDay.day}요일</b> 주문이 ${busiestDay.count}건으로 가장 많고, ${quietestDay.day}요일이 ${quietestDay.count}건으로 가장 적어 인력 배치 참고 자료로 활용할 수 있습니다.`,
+        `2026년 월평균 수주는 ${DATA.kpi.avg2026}건으로, 2025년(${DATA.kpi.avg2025}건) 대비 <b>${DATA.kpi.growthPct}% 증가</b>했습니다.`,
+        `상위 4개 발주처가 전체 수주의 <b>${DATA.kpi.top4SharePct}%</b>를 차지하고 있어(1위 ${topClient.name} ${topClient.pct}%), 소수 거래처에 대한 의존도가 높은 편입니다.`,
+        `건수 기준으로는 <b>${topRepByCount.name}</b> 담당자가 ${topRepByCount.count}건으로 가장 많지만, ${highRushRep.name} 담당자는 단납(소량·빈번 납품) 비율이 <b>${highRushRep.rushPct}%</b>로 높아 건수만으로는 드러나지 않는 업무 부담이 있을 수 있습니다.`,
+        `브랜드 중에서는 <b>${highRushBrand.code}</b>의 단납 비율이 ${highRushBrand.rushPct}%로 가장 높아, 대량 일괄 납품 위주인 다른 브랜드와 업무 성격이 다릅니다.`,
+        `요일별로는 <b>${busiestDay.day}요일</b> 작업이 ${busiestDay.count}건으로 가장 많고, ${quietestDay.day}요일이 ${quietestDay.count}건으로 가장 적어 인력 배치 참고자료로 활용할 수 있습니다.`,
         `현재 미확정(파이프라인) 건은 <b>${DATA.pipeline.length}건</b>, 긴급 처리 건은 <b>${DATA.urgent.length}건</b>이 남아있어 확인이 필요합니다.`,
       ];
       root.getElementById('summaryList').innerHTML = points.map(p => `<li>${p}</li>`).join('');
@@ -2759,7 +2796,7 @@
 
   const NAV_ITEMS = [
     { key:'schedule', label:'일정표' },
-    { key:'orderform', label:'주문 등록' },
+    { key:'orderform', label:'수주 등록' },
     { key:'sales', label:'영업 관리' },
     { key:'revenue', label:'매출 관리' },
     { key:'analytics', label:'경영 분석', ownerOnly:true },
@@ -2781,6 +2818,11 @@
     });
   }
 
+  function isMobileWidth(){
+    if (typeof window.matchMedia === 'function') return window.matchMedia('(max-width: 860px)').matches;
+    return window.innerWidth <= 860;
+  }
+
   function setSidebarHidden(hide){
     document.getElementById('appShell').classList.toggle('sidebar-hidden', hide);
   }
@@ -2793,9 +2835,11 @@
     document.querySelectorAll('.nav-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.view === view);
     });
-    // 일정표는 TV/모니터 상시 게시용 화면이라 메뉴를 가리고 나면 사이드바를 자동으로 접는다.
-    // 다른 메뉴로 이동하면 다시 펼쳐진다. 수동으로 열려면 좌측 하단 ☰ 버튼으로 다시 펼칠 수 있다.
-    setSidebarHidden(view === 'schedule');
+    // 일정표는 TV/모니터 상시 게시용 화면이라 메뉴를 고르고 나면 사이드바를 자동으로 접는다.
+    // 다른 메뉴로 이동하면 다시 펼쳐진다. 접혔을 때는 좌측 하단 ☰ 버튼으로 다시 펼칠 수 있다.
+    // 모바일 화면에서는 사이드바가 서랍(overlay) 형태라, 어떤 메뉴를 고르든 선택 즉시 접어서
+    // 내용 화면이 바로 보이게 한다.
+    setSidebarHidden(view === 'schedule' || isMobileWidth());
   }
 
   function enterApp(role){
@@ -2818,6 +2862,7 @@
   document.getElementById('loginStaffBtn').addEventListener('click', () => enterApp('staff'));
   document.getElementById('logoutBtn').addEventListener('click', doLogout);
   document.getElementById('sidebarToggleBtn').addEventListener('click', () => setSidebarHidden(false));
+  document.getElementById('sidebarBackdrop').addEventListener('click', () => setSidebarHidden(true));
 
 })();
 </script>
