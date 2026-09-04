@@ -1,6 +1,6 @@
 {
-  "name": "도무스 MES",
-  "short_name": "도무스 MES",
+  "name": "DOMUS",
+  "short_name": "DOMUS",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
