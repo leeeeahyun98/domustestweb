@@ -190,18 +190,19 @@
 
     <div class="panel">
       <div class="cal-head">
-        <div class="cal-title">
-          <h2 id="calTitle">2026년 9월</h2>
-          <span class="count" id="calCount">이번 달 0건</span>
+        <div class="cal-head-top">
+          <div class="cal-head-spacer"></div>
+          <div class="cal-title">
+            <h2 id="calTitle">2026년 9월</h2>
+            <span class="count" id="calCount">이번 달 0건</span>
+          </div>
+          <button class="add-holiday-btn" id="addHolidayBtn">+ 휴일/기타 일정</button>
         </div>
         <div class="cal-nav">
           <button class="nav-btn" id="prevBtn" aria-label="이전 달">‹</button>
-          <div class="cal-nav-mid">
-            <button class="today-btn" id="todayBtn">오늘</button>
-          </div>
+          <button class="today-btn" id="todayBtn">오늘</button>
           <button class="nav-btn" id="nextBtn" aria-label="다음 달">›</button>
         </div>
-        <button class="add-holiday-btn" id="addHolidayBtn">+ 휴일/기타 일정</button>
       </div>
       <div class="weekdays">
         <div class="sun">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="sat">토</div>
@@ -292,7 +293,8 @@
             <th>발주처</th>
             <th>담당자</th>
             <th>수주일</th>
-            <th>다음 일정</th>
+            <th>수주확정일</th>
+            <th>납품일</th>
             <th style="text-align:right">견적금액</th>
             <th class="col-manage"></th>
           </tr>
@@ -363,7 +365,7 @@
     </div>
 
     <div class="card">
-      <h2>작업 일정</h2>
+      <h2>납품 일정</h2>
       <div class="task-list" id="taskList"></div>
       <button class="add-task" id="addTask">+ 일정 추가</button>
     </div>
@@ -448,8 +450,6 @@
               <button class="tab active" data-p="month">월별</button>
               <button class="tab" data-p="quarter">분기별</button>
               <button class="tab" data-p="year">년도별</button>
-              <button class="tab" data-p="brand">브랜드별</button>
-              <button class="tab" data-p="client">발주처별</button>
             </div>
             <div class="filter-group"><label>브랜드</label><select class="filter-select" id="brandFilter"></select></div>
             <div class="filter-group"><label>발주처</label><select class="filter-select" id="clientFilter"></select></div>
@@ -687,16 +687,16 @@
     .clock .date{ font-size:12.5px; color:var(--text-muted); }
 
     .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); }
-    .cal-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
-    .cal-title{ display:flex; align-items:baseline; gap:10px; }
+    .cal-head{ display:flex; flex-direction:column; align-items:stretch; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border); }
+    .cal-head-top{ display:grid; grid-template-columns:1fr auto 1fr; align-items:start; gap:10px; }
+    .cal-head-spacer{ min-width:0; }
+    .cal-title{ display:flex; flex-direction:column; align-items:center; gap:2px; justify-self:center; text-align:center; }
     .cal-title h2{ margin:0; font-size:18px; font-weight:700; }
     .cal-title .count{ font-size:12.5px; color:var(--text-faint); }
-    .cal-nav{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex:1; min-width:220px; }
-    .cal-nav-mid{ display:flex; align-items:center; justify-content:center; gap:10px; flex:1; }
+    .add-holiday-btn{ justify-self:end; }
+    .cal-nav{ display:flex; align-items:center; justify-content:center; gap:28px; }
     @media (max-width:520px){
-      .cal-head{ flex-direction:column; align-items:stretch; }
-      .cal-nav{ align-items:stretch; order:2; }
-      .add-holiday-btn{ order:1; width:100%; margin-left:0; text-align:center; }
+      .add-holiday-btn{ min-width:0; font-size:11px; padding:0 9px; white-space:normal; line-height:1.2; word-break:keep-all; }
     }
     .nav-btn{
       background:var(--surface-2); border:1px solid var(--border); color:var(--text);
@@ -928,11 +928,12 @@
     .col-num{ width:48px; text-align:center; color:var(--text-faint); font-size:12.5px; font-weight:600; }
     .col-manage{ width:1%; text-align:right; }
 
-    .edit-rep, .edit-orderdate, .edit-next, .edit-amount{
+    .edit-rep, .edit-orderdate, .edit-confirmdate, .edit-next, .edit-amount{
       padding:7px 9px; border-radius:8px; border:1px solid var(--border);
       background:var(--surface); color:var(--text); font-size:12.5px; font-family:inherit; width:100%;
     }
     .edit-orderdate{ width:66px; }
+    .edit-confirmdate{ width:66px; }
     .edit-amount{ width:110px; }
     .row-btn{
       padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
@@ -1665,18 +1666,18 @@
      ========================================================= */
   function initSalesPage(root, appRole){
     const orders = [
-      { brand:'파리바게뜨', client:'파리바게뜨', store:'송도랜드마크시티점', rep:'이재황', orderDate:'08/15', urgent:false, next:'—', amount:8200000 },
-      { brand:'파리바게뜨', client:'파리바게뜨', store:'수원아너스빌위즈점', rep:'이재황', orderDate:'08/18', urgent:false, next:'09/08 설치', amount:6400000 },
-      { brand:'파리바게뜨위탁가맹', client:'파리크라상', store:'강동강일점', rep:'이재황', orderDate:'08/19', urgent:false, next:'09/10 설치', amount:5100000 },
-      { brand:'금강제화', client:'큐앤플랜', store:'거제점', rep:'이현재', orderDate:'08/20', urgent:false, next:'09/05 설치', amount:3200000 },
-      { brand:'금강제화', client:'금강제화', store:'롯데잠실점', rep:'이현재', orderDate:'08/20', urgent:true, next:'09/08 설치', amount:9800000 },
-      { brand:'금강제화', client:'금강제화', store:'구미점 외 5매장', rep:'이현재', orderDate:'08/22', urgent:false, next:'09/04 설치', amount:14500000 },
-      { brand:'기타', client:'디엔아이', store:'쿠팡 천안8FC', rep:'이현재', orderDate:'08/26', urgent:false, next:'09/09 설치', amount:2100000 },
-      { brand:'K2', client:'본사', store:'신세계아울렛시흥점', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/11 설치', amount:4300000 },
-      { brand:'K2', client:'우리가디자인', store:'모다아울렛경주점', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/03 설치', amount:1800000 },
-      { brand:'기타', client:'디엔아이', store:'일뽀르노 롯데월드몰점 가구', rep:'이현재', orderDate:'08/31', urgent:false, next:'09/03 설치', amount:2600000 },
-      { brand:'PC', client:'PC', store:'청담퀸즈파크점 가구이동', rep:'이재황', orderDate:'09/02', urgent:false, next:'09/28 설치', amount:900000 },
-      { brand:'도무스', client:'도무스', store:'추석연휴', rep:'시스템관리자', orderDate:'09/03', urgent:false, next:'09/24 휴무', amount:null },
+      { brand:'파리바게뜨', client:'파리바게뜨', store:'송도랜드마크시티점', rep:'이재황', orderDate:'08/15', confirmDate:'08/16', urgent:false, next:'—', amount:8200000 },
+      { brand:'파리바게뜨', client:'파리바게뜨', store:'수원아너스빌위즈점', rep:'이재황', orderDate:'08/18', confirmDate:'08/20', urgent:false, next:'09/08', amount:6400000 },
+      { brand:'파리바게뜨위탁가맹', client:'파리크라상', store:'강동강일점', rep:'이재황', orderDate:'08/19', confirmDate:'08/21', urgent:false, next:'09/10', amount:5100000 },
+      { brand:'금강제화', client:'큐앤플랜', store:'거제점', rep:'이현재', orderDate:'08/20', confirmDate:'08/22', urgent:false, next:'09/05', amount:3200000 },
+      { brand:'금강제화', client:'금강제화', store:'롯데잠실점', rep:'이현재', orderDate:'08/20', confirmDate:'08/21', urgent:true, next:'09/08', amount:9800000 },
+      { brand:'금강제화', client:'금강제화', store:'구미점 외 5매장', rep:'이현재', orderDate:'08/22', confirmDate:'08/23', urgent:false, next:'09/04', amount:14500000 },
+      { brand:'기타', client:'디엔아이', store:'쿠팡 천안8FC', rep:'이현재', orderDate:'08/26', confirmDate:'08/28', urgent:false, next:'09/09', amount:2100000 },
+      { brand:'K2', client:'본사', store:'신세계아울렛시흥점', rep:'이현재', orderDate:'08/31', confirmDate:'09/02', urgent:false, next:'09/11', amount:4300000 },
+      { brand:'K2', client:'우리가디자인', store:'모다아울렛경주점', rep:'이현재', orderDate:'08/31', confirmDate:'09/01', urgent:false, next:'09/03', amount:1800000 },
+      { brand:'기타', client:'디엔아이', store:'일뽀르노 롯데월드몰점 가구', rep:'이현재', orderDate:'08/31', confirmDate:'09/02', urgent:false, next:'09/03', amount:2600000 },
+      { brand:'PC', client:'PC', store:'청담퀸즈파크점 가구이동', rep:'이재황', orderDate:'09/02', confirmDate:'09/03', urgent:false, next:'09/28', amount:900000 },
+      { brand:'도무스', client:'도무스', store:'추석연휴', rep:'시스템관리자', orderDate:'09/03', confirmDate:'—', urgent:false, next:'09/24 휴무', amount:null },
     ];
     orders.forEach((o, i) => { o.id = i; });
     const REP_OPTIONS = ['이현재', '박성중', '이재황', '김선우', '시스템관리자'];
@@ -1740,6 +1741,7 @@
               ${nameCell}
               <td><select class="edit-rep">${REP_OPTIONS.map(n => `<option value="${n}"${n === o.rep ? ' selected' : ''}>${n}</option>`).join('')}</select></td>
               <td><input class="edit-orderdate mono" type="text" value="${o.orderDate}"></td>
+              <td><input class="edit-confirmdate mono" type="text" value="${o.confirmDate || ''}"></td>
               <td><input class="edit-next" type="text" value="${o.next}"></td>
               <td style="text-align:right">${role === 'owner'
                 ? `<input class="edit-amount mono" type="text" value="${o.amount != null ? o.amount : ''}" style="text-align:right">`
@@ -1757,6 +1759,7 @@
             ${nameCell}
             <td>${o.rep}</td>
             <td class="mono">${o.orderDate}</td>
+            <td class="mono">${o.confirmDate || '-'}</td>
             <td>${o.next}</td>
             <td style="text-align:right">${renderAmount(o.amount)}</td>
             <td class="col-manage"><button type="button" class="row-btn edit-row" data-id="${o.id}">수정</button></td>
@@ -1777,6 +1780,7 @@
           const row = btn.closest('tr');
           o.rep = row.querySelector('.edit-rep').value;
           o.orderDate = row.querySelector('.edit-orderdate').value.trim() || o.orderDate;
+          o.confirmDate = row.querySelector('.edit-confirmdate').value.trim();
           o.next = row.querySelector('.edit-next').value.trim();
           const amtInput = row.querySelector('.edit-amount');
           if (amtInput) {
@@ -2263,30 +2267,21 @@
       render();
     });
 
-    const PERIOD_LABEL = { month:'월별', quarter:'분기별', year:'년도별', brand:'브랜드별', client:'발주처별' };
+    const PERIOD_LABEL = { month:'월별', quarter:'분기별', year:'년도별' };
 
     function groupKey(r){
       if (period === 'month') return r.date.slice(0,7);
       if (period === 'quarter') return quarterOf(r.date);
-      if (period === 'year') return r.date.slice(0,4);
-      if (period === 'client') return r.client || '(미상)';
-      return r.brand;
+      return r.date.slice(0,4);
     }
 
     function groupLabel(key){
       if (period === 'month') { const [y,m] = key.split('-'); return `${y}년 ${Number(m)}월`; }
       if (period === 'quarter') { const [y,q] = key.split('-Q'); return `${y}년 ${q}분기`; }
-      if (period === 'year') return `${key}년`;
-      return key;
-    }
-
-    function updateFilterVisibility(){
-      root.getElementById('brandFilter').closest('.filter-group').style.display = period === 'brand' ? '' : 'none';
-      root.getElementById('clientFilter').closest('.filter-group').style.display = period === 'client' ? '' : 'none';
+      return `${key}년`;
     }
 
     function render(){
-      updateFilterVisibility();
       let list = rawRevenue.filter(r =>
         (brandFilterVal === '전체' || r.brand === brandFilterVal) &&
         (clientFilterVal === '전체' || r.client === clientFilterVal) &&
@@ -2310,7 +2305,7 @@
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(r);
       });
-      const groupKeysSorted = [...groups.keys()].sort((a,b) => (period === 'brand' || period === 'client') ? a.localeCompare(b,'ko') : b.localeCompare(a));
+      const groupKeysSorted = [...groups.keys()].sort((a,b) => b.localeCompare(a));
 
       const tbody = root.getElementById('tbody');
       tbody.innerHTML = '';
