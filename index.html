@@ -676,7 +676,6 @@
             <button class="tab" data-p="year">연도별</button>
           </div>
         </div>
-        <div class="chart-sub" id="analysisFilterNote" style="padding:10px 18px 0;">전체 데이터 기준</div>
         <div class="stat-row" id="revAnalysisStatRow" style="padding:12px 18px 4px;"></div>
 
         <div class="analysis-section-label">추이</div>
@@ -917,6 +916,20 @@
 
   const REP_NAMES = ['이현재', '박성중', '이재황', '김선우'];
 
+  /* 화면 곳곳에서 브랜드명·발주처명·점포명·작업내용 등 "사용자가 직접 입력한 텍스트"를
+     innerHTML로 그려주는데, 이스케이프 없이 그대로 꽂으면 <script>나 <img onerror=...> 같은
+     내용을 입력했을 때 그대로 실행되는 저장형 XSS가 된다. 사용자 입력이 들어가는 모든
+     innerHTML 조립 지점에서는 반드시 이 함수를 거쳐서 순수 텍스트로만 보이게 한다. */
+  function escapeHtml(value){
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   /* 저장/등록 등 "확실히 처리됐다"고 알려줘야 하는 경우 alert() 대신 이 토스트를 쓴다.
      alert()는 미리보기 환경(iframe)에 따라 아예 뜨지 않을 수 있어, 화면에 직접 보이는
      알림으로 통일했다. type: 'ok'(기본, 초록) | 'error'(빨강) */
@@ -925,7 +938,7 @@
     if (!host) { return; }
     const el = document.createElement('div');
     el.className = `toast ${type === 'error' ? 'error' : 'ok'}`;
-    el.innerHTML = `<span class="toast-icon">${type === 'error' ? '⚠' : '✓'}</span><span>${message}</span>`;
+    el.innerHTML = `<span class="toast-icon">${type === 'error' ? '⚠' : '✓'}</span><span>${escapeHtml(message)}</span>`;
     host.appendChild(el);
     const raf = window.requestAnimationFrame || ((fn) => setTimeout(fn, 0));
     raf(() => el.classList.add('show'));
@@ -3658,7 +3671,7 @@
     ];
 
     // 표시용 라벨: "브랜드코드 점포명(발주처/담당자)" — 발주처는 브랜드 마스터를 참고해 "코드 이름" 형식으로 통일한다.
-    function eventLabel(ev){ return `${ev.brand}${ev.store}(${clientShortCode(ev.client)}/${ev.op})`; }
+    function eventLabel(ev){ return escapeHtml(`${ev.brand}${ev.store}(${clientShortCode(ev.client)}/${ev.op})`); }
     // 시각(정시 기준 시 단위)만 뽑아서 "09:00" -> "9" 처럼 짧게 표시한다.
     function hourOf(time){
       if (!time) return '';
@@ -3668,7 +3681,7 @@
     // 브랜드명+점포명이 띄어쓰기 없이 그대로 붙어 있어서, 칸이 좁은 화면(휴대폰)에서 줄바꿈할 곳을
     // 못 찾고 글자 한 자씩 쪼개지는 문제가 있었다. 눈에 보이지 않는 폭 없는 공백(zero-width space)을
     // 브랜드/점포명 사이에 하나 끼워서, 필요할 때 그 지점에서 자연스럽게 줄바꿈되게 한다.
-    function eventLabelWithTime(ev){ return `${ev.brand}​${ev.store}(${clientShortCode(ev.client)}/${ev.op}/${hourOf(ev.time)})`; }
+    function eventLabelWithTime(ev){ return escapeHtml(`${ev.brand}​${ev.store}(${clientShortCode(ev.client)}/${ev.op}/${hourOf(ev.time)})`); }
 
     const events = {};
     rawEvents.forEach((e, idx) => {
@@ -3773,7 +3786,7 @@
           noteEntries.forEach(note => {
             const chip = document.createElement('div');
             chip.className = 'ev-chip holiday';
-            chip.innerHTML = `<span class="chip-row2">${note.label}</span>`;
+            chip.innerHTML = `<span class="chip-row2">${escapeHtml(note.label)}</span>`;
             evWrap.appendChild(chip);
           });
           // 데스크탑에서는 "+N건 더"로 숨기지 않고 그날의 모든 작업을 다 보여준다 —
@@ -3851,7 +3864,7 @@
           card.className = 'ev-card holiday';
           card.innerHTML = `
             <div class="row">
-              <span class="client"><span class="type-tag">${c.isHoliday ? '[휴일]' : '[기타]'}</span>${c.label}</span>
+              <span class="client"><span class="type-tag">${c.isHoliday ? '[휴일]' : '[기타]'}</span>${escapeHtml(c.label)}</span>
               <button type="button" class="del-btn">삭제</button>
             </div>
           `;
@@ -3879,7 +3892,7 @@
                     <select class="e-time-m">${MIN_OPTIONS.map(m => `<option value="${m}"${Number(ev.time.split(':')[1])===m?' selected':''}>${pad(m)}분</option>`).join('')}</select>
                   </div>
                 </div>
-                <div class="ev-edit-field full"><label>작업내용</label><input type="text" class="e-task" value="${ev.task || ''}" placeholder="납품 품목"></div>
+                <div class="ev-edit-field full"><label>작업내용</label><input type="text" class="e-task" value="${escapeHtml(ev.task || '')}" placeholder="납품 품목"></div>
                 <div class="ev-edit-field"><label>타입</label>
                   <select class="e-material">
                     <option value="금속"${ev.material==='금속'?' selected':''}>금속</option>
@@ -3919,10 +3932,17 @@
               });
               card.querySelector('.e-delete-ok').addEventListener('click', () => {
                 removeEventFromEvents(ev);
+                // 수주 등록에서 만들어진 납품 일정이면 원본 데이터(ORDER_TASKS)에서도 완전히 지워서,
+                // 다른 화면이나 다시 들어왔을 때 되살아나지 않게 한다.
+                if (ev.__orderTaskRef) {
+                  const idx = ORDER_TASKS.indexOf(ev.__orderTaskRef);
+                  if (idx >= 0) ORDER_TASKS.splice(idx, 1);
+                }
                 pendingDeleteId = null;
                 editingEventId = null;
                 renderCalendar();
                 openDay(date, events[ymd(date)] || [], customEventsByDate(ymd(date)));
+                if (typeof window.refreshAllPages === 'function') window.refreshAllPages('domus-schedule-page');
               });
             }
             const cancelBtn = card.querySelector('.e-cancel');
@@ -3953,9 +3973,21 @@
                 events[newKey].push(ev);
                 events[newKey].sort((a,b) => a.time.localeCompare(b.time));
               }
+              // 수주 등록에서 만들어진 납품 일정이면, 여기서 고친 내용을 원본 데이터(ORDER_TASKS)에도
+              // 그대로 반영해서 다른 화면(오늘 할 일 등)이나 새로고침 후에도 수정 내용이 유지되게 한다.
+              if (ev.__orderTaskRef) {
+                const t = ev.__orderTaskRef;
+                t.date = ymd(ev.due);
+                t.time = ev.time;
+                t.task = ev.task;
+                t.material = ev.material;
+                t.qty = ev.qty;
+                t.op = ev.op;
+              }
               editingEventId = null;
               renderCalendar();
               openDay(date, events[ymd(date)] || [], dayCustom);
+              if (typeof window.refreshAllPages === 'function') window.refreshAllPages('domus-schedule-page');
             });
           } else {
             card.innerHTML = `
@@ -3963,7 +3995,7 @@
                 <span class="client${ev.material==='금속'?' metal':''}">${eventLabel(ev)}</span>
                 <span class="due mono">${ev.time}</span>
               </div>
-              <div class="item">${ev.task ? ev.task + ' · ' : ''}${formatQty(ev.qty)}${ev.solo ? ' · <span class="tag-solo">단독발주</span>' : ''}</div>
+              <div class="item">${ev.task ? escapeHtml(ev.task) + ' · ' : ''}${formatQty(ev.qty)}${ev.solo ? ' · <span class="tag-solo">단독발주</span>' : ''}</div>
               <div class="row">
                 <span class="assign">${ev.category.length ? ev.category.join(' · ') + ' · ' : ''}담당 ${ev.op}</span>
                 <span>
@@ -4110,7 +4142,7 @@
     function refreshFilterOptions(){
       const opts = (sel, values) => {
         const current = sel.value;
-        sel.innerHTML = ['전체', ...values].map(v => `<option value="${v}">${v}</option>`).join('');
+        sel.innerHTML = ['전체', ...values].map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
         sel.value = ['전체', ...values].includes(current) ? current : '전체';
       };
       opts(root.getElementById('filterBrand'), [...new Set(orders.map(o => o.brand))]);
@@ -4164,8 +4196,8 @@
     function orderRowHtml(o, i){
       const nameCell = `
         <td class="cell-client">
-          <div class="name">${o.store} ${o.urgent ? '<span class="urgent-tag">긴급</span>' : ''}</div>
-          <div class="brand">${brandLabel(o.brand)} · ${o.client}</div>
+          <div class="name">${escapeHtml(o.store)} ${o.urgent ? '<span class="urgent-tag">긴급</span>' : ''}</div>
+          <div class="brand">${escapeHtml(brandLabel(o.brand))} · ${escapeHtml(o.client)}</div>
         </td>`;
       if (editingId === o.id) {
         return `
@@ -4482,8 +4514,8 @@
       panel.innerHTML = `
         <div class="head">
           <div>
-            <div class="name">${rep.client}</div>
-            <div class="brand-line">브랜드: ${rep.brand} · 검색결과 ${matches.length}건</div>
+            <div class="name">${escapeHtml(rep.client)}</div>
+            <div class="brand-line">브랜드: ${escapeHtml(rep.brand)} · 검색결과 ${matches.length}건</div>
           </div>
           <button class="close" id="clientClose">✕</button>
         </div>
@@ -4498,7 +4530,7 @@
             <h3>다가오는 일정 (${upcoming.length}건)</h3>
             ${upcoming.length ? upcoming.map(o => `
               <div class="inprogress-row">
-                <span>${o.store}${o.urgent ? ' <span class="urgent-tag">긴급</span>' : ''}</span>
+                <span>${escapeHtml(o.store)}${o.urgent ? ' <span class="urgent-tag">긴급</span>' : ''}</span>
                 <span>${dispDate(o.next)}</span>
               </div>
             `).join('') : '<div class="inprogress-row"><span>예정된 일정 없음</span></div>'}
@@ -4521,7 +4553,7 @@
         box.className = 'history-full';
         box.style.marginTop = '10px';
         box.innerHTML = history.map(o => `
-          <div class="inprogress-row"><span>${dispDate(o.orderDate)} · ${o.store}${o.urgent ? ' <span class="urgent-tag">긴급</span>' : ''}</span><span>${renderAmount(o.amount)}</span></div>
+          <div class="inprogress-row"><span>${dispDate(o.orderDate)} · ${escapeHtml(o.store)}${o.urgent ? ' <span class="urgent-tag">긴급</span>' : ''}</span><span>${renderAmount(o.amount)}</span></div>
         `).join('');
         panel.querySelector('.client-block:last-child').appendChild(box);
         btn.textContent = '접기 ▴';
@@ -4561,7 +4593,7 @@
       const select = root.getElementById(selectId);
       const allBrandLabels = [...new Set(validOrders.map(o => brandLabel(o.brand)))].sort((a,b) => a.localeCompare(b, 'ko'));
       if (filterVal && !allBrandLabels.includes(filterVal)) { filterVal = ''; setFilter(''); }
-      select.innerHTML = `<option value="">전체</option>` + allBrandLabels.map(b => `<option value="${b}"${b === filterVal ? ' selected' : ''}>${b}</option>`).join('');
+      select.innerHTML = `<option value="">전체</option>` + allBrandLabels.map(b => `<option value="${escapeHtml(b)}"${b === filterVal ? ' selected' : ''}>${escapeHtml(b)}</option>`).join('');
       const fmtMetric = metric === 'count' ? (v => `${Math.round(v)}건`) : fmtWon;
       if (!filterVal) {
         renderTrendChart(
@@ -4598,7 +4630,7 @@
       root.getElementById(containerId).innerHTML = sorted.map((e, i) => `
         <div class="hbar-row">
           <div class="hbar-idx">${i+1}</div>
-          <div class="hbar-name">${e.name}${e.sub ? `<span class="client">${e.sub}</span>` : ''}</div>
+          <div class="hbar-name">${escapeHtml(e.name)}${e.sub ? `<span class="client">${escapeHtml(e.sub)}</span>` : ''}</div>
           <div class="hbar-track"><div class="hbar-fill ${barClass || ''}" style="width:${Math.max(4, Math.round(e[sortField]/max*100))}%"></div></div>
           <div class="hbar-val mono">${fmtCell(e[sortField])}</div>
         </div>
@@ -4627,7 +4659,7 @@
           const brandOrders = validOrders.filter(o => brandLabel(o.brand) === top.full);
           const { pct } = pctDeltaVsPrev(brandOrders, latestKey, analysisUnit);
           const deltaText = pct == null ? '' : pct > 0.5 ? ` — ${prevLabel} 대비 <b>${pct.toFixed(0)}% 증가</b>하며` : pct < -0.5 ? ` — ${prevLabel} 대비 ${Math.abs(pct).toFixed(0)}% 감소했지만` : ` — ${prevLabel}과 비슷한 수준으로`;
-          insights.push({ cls:'up', icon:'🔺', html: `<b>${top.full}</b>${josaGaYi(top.full)}${deltaText} ${thisLabel} 수주액 1위입니다.` });
+          insights.push({ cls:'up', icon:'🔺', html: `<b>${escapeHtml(top.full)}</b>${josaGaYi(top.full)}${deltaText} ${thisLabel} 수주액 1위입니다.` });
         }
         let worst = null;
         brandLatestList.forEach(e => {
@@ -4637,17 +4669,17 @@
           if (pct != null && pct < -10 && (!worst || pct < worst.pct)) worst = { full:e.full, pct };
         });
         if (worst) {
-          insights.push({ cls:'down', icon:'⚠️', html: `<b>${worst.full}</b>${josaEunNeun(worst.full)} ${prevLabel} 대비 <b>${Math.abs(worst.pct).toFixed(0)}% 감소</b>했습니다 — 확인이 필요해요.` });
+          insights.push({ cls:'down', icon:'⚠️', html: `<b>${escapeHtml(worst.full)}</b>${josaEunNeun(worst.full)} ${prevLabel} 대비 <b>${Math.abs(worst.pct).toFixed(0)}% 감소</b>했습니다 — 확인이 필요해요.` });
         }
       }
       if (newClientNames.length) {
         const lastName = newClientNames[newClientNames.length - 1];
-        insights.push({ cls:'new', icon:'🆕', html: `${thisLabel} <b>${newClientNames.join(', ')}</b>${josaWaGwa(lastName)} 신규 거래가 시작됐습니다.` });
+        insights.push({ cls:'new', icon:'🆕', html: `${thisLabel} <b>${newClientNames.map(escapeHtml).join(', ')}</b>${josaWaGwa(lastName)} 신규 거래가 시작됐습니다.` });
       }
       if (repLatestList.length) {
         const topRep = [...repLatestList].sort((a,b) => b.amt - a.amt)[0];
         if (topRep.amt > 0) {
-          insights.push({ cls:'person', icon:'👤', html: `<b>${topRep.name}</b> 담당자가 ${thisLabel} 가장 높은 수주액(<b>${fmtWon(topRep.amt)}</b>)을 기록했습니다.` });
+          insights.push({ cls:'person', icon:'👤', html: `<b>${escapeHtml(topRep.name)}</b> 담당자가 ${thisLabel} 가장 높은 수주액(<b>${fmtWon(topRep.amt)}</b>)을 기록했습니다.` });
         }
       }
       const list = root.getElementById('analysisInsightsList');
@@ -4977,20 +5009,20 @@
       const exactMatch = BRANDS.includes(brandInput.value.trim());
       let html = items.length
         ? items.map(b => b.code === pendingDeleteBrandCode ? `
-            <div class="combo-item combo-item-confirm" data-code="${b.code}">
-              <span class="combo-confirm-text">"${b.name}" 삭제할까요?</span>
-              <button type="button" class="combo-confirm-btn bd-cancel" data-code="${b.code}">취소</button>
-              <button type="button" class="combo-confirm-btn danger bd-ok" data-code="${b.code}">삭제</button>
+            <div class="combo-item combo-item-confirm" data-code="${escapeHtml(b.code)}">
+              <span class="combo-confirm-text">"${escapeHtml(b.name)}" 삭제할까요?</span>
+              <button type="button" class="combo-confirm-btn bd-cancel" data-code="${escapeHtml(b.code)}">취소</button>
+              <button type="button" class="combo-confirm-btn danger bd-ok" data-code="${escapeHtml(b.code)}">삭제</button>
             </div>
           ` : `
-            <div class="combo-item" data-code="${b.code}" data-name="${b.name}">
-              <span class="combo-item-main"><span class="combo-code">${b.code}</span><span class="combo-name">${b.name}</span></span>
-              <button type="button" class="combo-item-del bd-del" data-code="${b.code}" title="삭제">✕</button>
+            <div class="combo-item" data-code="${escapeHtml(b.code)}" data-name="${escapeHtml(b.name)}">
+              <span class="combo-item-main"><span class="combo-code">${escapeHtml(b.code)}</span><span class="combo-name">${escapeHtml(b.name)}</span></span>
+              <button type="button" class="combo-item-del bd-del" data-code="${escapeHtml(b.code)}" title="삭제">✕</button>
             </div>
           `).join('')
         : `<div class="combo-empty">일치하는 브랜드가 없어요</div>`;
       if (brandInput.value.trim() && !exactMatch) {
-        html += `<div class="combo-divider"></div><div class="combo-add-trigger" id="brandAddTrigger">＋ "${brandInput.value.trim()}" 새 브랜드로 등록</div>`;
+        html += `<div class="combo-divider"></div><div class="combo-add-trigger" id="brandAddTrigger">＋ "${escapeHtml(brandInput.value.trim())}" 새 브랜드로 등록</div>`;
       }
       brandDropdown.innerHTML = html;
       brandDropdown.hidden = false;
@@ -5060,7 +5092,7 @@
         <div class="combo-add-title">새 브랜드로 등록</div>
         <div class="combo-add-row">
           <div class="combo-add-field code"><label>코드</label><input class="ba-code" placeholder="예: NK"></div>
-          <div class="combo-add-field grow"><label>브랜드명</label><input class="ba-name" value="${prefillName}"></div>
+          <div class="combo-add-field grow"><label>브랜드명</label><input class="ba-name" value="${escapeHtml(prefillName)}"></div>
         </div>
         <div class="combo-add-actions">
           <button type="button" class="btn ba-cancel">취소</button>
@@ -5113,30 +5145,30 @@
       const names = clientCandidates().filter(n => !q || n.toLowerCase().includes(q));
       const exactMatch = clientCandidates().includes(clientInput.value.trim());
       let html = '';
-      if (filteredToBrand) html += `<div class="combo-group-label">${brandInput.value.trim()}의 발주처</div>`;
+      if (filteredToBrand) html += `<div class="combo-group-label">${escapeHtml(brandInput.value.trim())}의 발주처</div>`;
       html += names.length
         ? names.map(n => {
             if (n === pendingDeleteClientName) {
               return `
-                <div class="combo-item combo-item-confirm" data-name="${n}">
-                  <span class="combo-confirm-text">"${n}" 삭제할까요?</span>
-                  <button type="button" class="combo-confirm-btn cd-cancel" data-name="${n}">취소</button>
-                  <button type="button" class="combo-confirm-btn danger cd-ok" data-name="${n}">삭제</button>
+                <div class="combo-item combo-item-confirm" data-name="${escapeHtml(n)}">
+                  <span class="combo-confirm-text">"${escapeHtml(n)}" 삭제할까요?</span>
+                  <button type="button" class="combo-confirm-btn cd-cancel" data-name="${escapeHtml(n)}">취소</button>
+                  <button type="button" class="combo-confirm-btn danger cd-ok" data-name="${escapeHtml(n)}">삭제</button>
                 </div>
               `;
             }
             const c = CLIENT_CODE_MAP[n];
             const deletable = CLIENT_MASTER.some(cm => cm.name === n);
             return `
-              <div class="combo-item" data-name="${n}">
-                <span class="combo-item-main">${c ? `<span class="combo-code">${c}</span>` : ''}<span class="combo-name">${n}</span></span>
-                ${deletable ? `<button type="button" class="combo-item-del cd-del" data-name="${n}" title="삭제">✕</button>` : ''}
+              <div class="combo-item" data-name="${escapeHtml(n)}">
+                <span class="combo-item-main">${c ? `<span class="combo-code">${escapeHtml(c)}</span>` : ''}<span class="combo-name">${escapeHtml(n)}</span></span>
+                ${deletable ? `<button type="button" class="combo-item-del cd-del" data-name="${escapeHtml(n)}" title="삭제">✕</button>` : ''}
               </div>
             `;
           }).join('')
         : `<div class="combo-empty">일치하는 발주처가 없어요</div>`;
       if (clientInput.value.trim() && !exactMatch) {
-        html += `<div class="combo-divider"></div><div class="combo-add-trigger" id="clientAddTrigger">＋ "${clientInput.value.trim()}" 새 발주처로 등록</div>`;
+        html += `<div class="combo-divider"></div><div class="combo-add-trigger" id="clientAddTrigger">＋ "${escapeHtml(clientInput.value.trim())}" 새 발주처로 등록</div>`;
       }
       clientDropdown.innerHTML = html;
       clientDropdown.hidden = false;
@@ -5200,7 +5232,7 @@
         <div class="combo-add-title">새 발주처로 등록</div>
         <div class="combo-add-row">
           <div class="combo-add-field code"><label>코드</label><input class="ca-code" placeholder="예: KK"></div>
-          <div class="combo-add-field grow"><label>발주처명</label><input class="ca-name" value="${prefillName}"></div>
+          <div class="combo-add-field grow"><label>발주처명</label><input class="ca-name" value="${escapeHtml(prefillName)}"></div>
         </div>
         <div class="combo-add-actions">
           <button type="button" class="btn ca-cancel">취소</button>
@@ -5357,7 +5389,13 @@
     repSelect.addEventListener('change', updateSummary);
     updateSummary();
 
+    // 저장 버튼(데스크탑/모바일 두 개)이 연속 클릭되거나, 뒤에서 refreshAllPages() 흐름이
+    // 바뀌어 이 화면이 더 이상 자동으로 재마운트되지 않게 되더라도, 같은 내용이 중복
+    // 저장되지 않도록 명시적으로 막는다(우연히 재마운트에 기대던 기존 방식 대신).
+    let isSaving = false;
     function saveOrder(){
+      if (isSaving) return;
+
       const missing = [];
       if (!root.getElementById('f-brand').value.trim()) missing.push('브랜드');
       if (!root.getElementById('f-client').value.trim()) missing.push('발주처');
@@ -5368,6 +5406,8 @@
         showToast(`다음 항목을 입력해주세요: ${missing.join(', ')}`, 'error');
         return;
       }
+
+      isSaving = true;
 
       const brandVal = root.getElementById('f-brand').value.trim();
       const clientVal = root.getElementById('f-client').value.trim();
@@ -5413,6 +5453,10 @@
 
       showToast('수주가 등록되었습니다. 영업 관리·일정표에 바로 반영됩니다.');
       if (typeof window.refreshAllPages === 'function') window.refreshAllPages();
+      // refreshAllPages()가 이 화면도 함께 재마운트하므로 보통은 여기 도달하기 전에 이미
+      // 새 initOrderFormPage 인스턴스로 교체되지만, 혹시 이 화면이 재마운트 대상에서
+      // 제외되도록 바뀌더라도 계속 저장할 수 있게 안전하게 플래그를 되돌려 둔다.
+      isSaving = false;
     }
     root.getElementById('saveBtn').addEventListener('click', saveOrder);
     const saveBtnMobile = root.getElementById('saveBtnMobile');
@@ -5504,8 +5548,8 @@
         row.innerHTML = `
           <div class="time mono">${t.time}</div>
           <div class="body">
-            <div class="client">${t.client}</div>
-            <div class="desc"><span class="type-tag">[${t.type}]</span> ${t.task} · 작업량 ${t.qty}% · ${t.op}</div>
+            <div class="client">${escapeHtml(t.client)}</div>
+            <div class="desc"><span class="type-tag">[${t.type}]</span> ${escapeHtml(t.task)} · 작업량 ${t.qty}% · ${escapeHtml(t.op)}</div>
           </div>
           <div class="check">✓</div>
         `;
@@ -5529,12 +5573,26 @@
     const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 
     const REP_LIST = ['이현재', '박성중', '이재황', '김선우'];
-    const isStaffSession = appRole === 'staff';
 
-    // 다른 화면과 공유하는 모듈 공용 데이터(REVENUE_ALL)를 그대로 사용한다.
-    const rawRevenueAll = REVENUE_ALL;
+    // 매출 관리는 관리자 전용 화면이다. 메뉴(nav)에서 숨기는 것만으로는 개발자도구 등으로
+    // 강제 진입했을 때 전체 매출·목표 데이터가 그대로 노출될 수 있으므로, 화면 진입 시점에도
+    // 한 번 더 역할을 확인해서 관리자가 아니면 데이터를 아예 그리지 않는다(2차 방어).
+    // 아래부터는 이 검증을 통과한 "관리자 세션"에서만 실행되므로, 담당자용 마스킹/필터링
+    // 로직을 별도로 둘 필요가 없다(과거에는 담당자 미리보기 모드가 있었으나 지금은 없음).
+    if (appRole !== 'owner') {
+      const lockPage = root.querySelector('.page');
+      if (lockPage) {
+        lockPage.innerHTML = `
+          <div style="padding:100px 24px; text-align:center; color:var(--text-faint); font-size:14px; max-width:420px; margin:0 auto;">
+            매출 관리는 관리자 계정에서만 볼 수 있습니다.
+          </div>
+        `;
+      }
+      return;
+    }
 
-    const rawRevenue = isStaffSession ? rawRevenueAll.filter(r => r.rep === currentRep) : rawRevenueAll;
+    // 다른 화면과 공유하는 모듈 공용 데이터(REVENUE_ALL)를 그대로 사용한다 — 관리자는 항상 전체를 본다.
+    const rawRevenue = REVENUE_ALL;
 
     // 입금은 한 번에 들어오지 않고 계약금·중도금·잔금처럼 여러 번에 걸쳐 들어오는 경우가 많다.
     // r.payments가 있으면 그 내역의 합으로 입금액을 계산하고, 없으면 기존 paid(boolean) 방식을 그대로 따른다.
@@ -5563,9 +5621,6 @@
     let clientFilterVal = '전체';
     let repFilterVal = '전체';
     let unpaidOnlyVal = false;
-    // 매출 관리 화면은 관리자 전용 메뉴이므로(NAV_ITEMS의 ownerOnly) role은 항상 'owner'다 — 미리보기 전환 UI는 없앴다.
-    const role = 'owner';
-    const maskWon = n => won(n);
     let analysisUnit = 'month';
     // 매출액 추이 / 매출 건수 추이 각각 독립적으로 "전체" 또는 특정 브랜드를 선택해서 볼 수 있다.
     let analysisAmtEntityFilter = '';
@@ -5578,7 +5633,7 @@
       const select = root.getElementById(selectId);
       const allBrandLabels = [...new Set(rows.map(r => brandLabel(r.brand)))].sort((a,b) => a.localeCompare(b, 'ko'));
       if (filterVal && !allBrandLabels.includes(filterVal)) { filterVal = ''; setFilter(''); }
-      select.innerHTML = `<option value="">전체</option>` + allBrandLabels.map(b => `<option value="${b}"${b === filterVal ? ' selected' : ''}>${b}</option>`).join('');
+      select.innerHTML = `<option value="">전체</option>` + allBrandLabels.map(b => `<option value="${escapeHtml(b)}"${b === filterVal ? ' selected' : ''}>${escapeHtml(b)}</option>`).join('');
       const fmtMetric = metric === 'count' ? (v => `${Math.round(v)}건`) : won;
       if (!filterVal) {
         renderTrendChart(
@@ -5610,7 +5665,7 @@
       root.getElementById(containerId).innerHTML = sorted.map((e, i) => `
         <div class="hbar-row">
           <div class="hbar-idx">${i+1}</div>
-          <div class="hbar-name">${e.name}${e.sub ? `<span class="client">${e.sub}</span>` : ''}</div>
+          <div class="hbar-name">${escapeHtml(e.name)}${e.sub ? `<span class="client">${escapeHtml(e.sub)}</span>` : ''}</div>
           <div class="hbar-track"><div class="hbar-fill ${barClass || ''}" style="width:${Math.max(4, Math.round(e[sortField]/max*100))}%"></div></div>
           <div class="hbar-val mono">${fmtCell(e[sortField])}</div>
         </div>
@@ -5638,7 +5693,7 @@
           const brandRows = rows.filter(r => brandLabel(r.brand) === top.full);
           const { pct } = pctDeltaVsPrevRev(brandRows, latestKey, analysisUnit);
           const deltaText = pct == null ? '' : pct > 0.5 ? ` — ${prevLabel} 대비 <b>${pct.toFixed(0)}% 증가</b>하며` : pct < -0.5 ? ` — ${prevLabel} 대비 ${Math.abs(pct).toFixed(0)}% 감소했지만` : ` — ${prevLabel}과 비슷한 수준으로`;
-          insights.push({ cls:'up', icon:'🔺', html: `<b>${top.full}</b>${josaGaYi(top.full)}${deltaText} ${thisLabel} 매출액 1위입니다.` });
+          insights.push({ cls:'up', icon:'🔺', html: `<b>${escapeHtml(top.full)}</b>${josaGaYi(top.full)}${deltaText} ${thisLabel} 매출액 1위입니다.` });
         }
         let worst = null;
         brandLatestList.forEach(e => {
@@ -5648,13 +5703,13 @@
           if (pct != null && pct < -10 && (!worst || pct < worst.pct)) worst = { full:e.full, pct };
         });
         if (worst) {
-          insights.push({ cls:'down', icon:'⚠️', html: `<b>${worst.full}</b>${josaEunNeun(worst.full)} ${prevLabel} 대비 <b>${Math.abs(worst.pct).toFixed(0)}% 감소</b>했습니다 — 확인이 필요해요.` });
+          insights.push({ cls:'down', icon:'⚠️', html: `<b>${escapeHtml(worst.full)}</b>${josaEunNeun(worst.full)} ${prevLabel} 대비 <b>${Math.abs(worst.pct).toFixed(0)}% 감소</b>했습니다 — 확인이 필요해요.` });
         }
       }
       if (clientLatestList.length) {
         const topClient = [...clientLatestList].sort((a,b) => b.amt - a.amt)[0];
         if (topClient.amt > 0) {
-          insights.push({ cls:'person', icon:'🏢', html: `<b>${topClient.name}</b>${josaGaYi(topClient.name)} ${thisLabel} 가장 높은 매출(<b>${won(topClient.amt)}</b>)을 기록했습니다.` });
+          insights.push({ cls:'person', icon:'🏢', html: `<b>${escapeHtml(topClient.name)}</b>${josaGaYi(topClient.name)} ${thisLabel} 가장 높은 매출(<b>${won(topClient.amt)}</b>)을 기록했습니다.` });
         }
       }
       const list = root.getElementById('revInsightsList');
@@ -5667,28 +5722,22 @@
       `).join('');
     }
 
-    if (isStaffSession) {
-      // (이론상 도달하지 않지만) 담당자 필터를 안전하게 숨긴다.
-      const repFilterGroup = root.getElementById('repFilter').closest('.filter-group');
-      if (repFilterGroup) repFilterGroup.style.display = 'none';
-    }
-
     function refreshBrandOptions(){
       const brands = ['전체', ...new Set(rawRevenue.map(r => r.brand))];
       const sel = root.getElementById('brandFilter');
-      sel.innerHTML = brands.map(b => `<option value="${b}">${b === '전체' ? b : brandLabel(b)}</option>`).join('');
+      sel.innerHTML = brands.map(b => `<option value="${escapeHtml(b)}">${b === '전체' ? escapeHtml(b) : escapeHtml(brandLabel(b))}</option>`).join('');
       sel.value = brands.includes(brandFilterVal) ? brandFilterVal : '전체';
       brandFilterVal = sel.value;
 
       const clients = ['전체', ...new Set(rawRevenue.map(r => r.client).filter(Boolean))];
       const clientSel = root.getElementById('clientFilter');
-      clientSel.innerHTML = clients.map(c => `<option value="${c}">${c}</option>`).join('');
+      clientSel.innerHTML = clients.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
       clientSel.value = clients.includes(clientFilterVal) ? clientFilterVal : '전체';
       clientFilterVal = clientSel.value;
 
       const reps = ['전체', ...new Set(rawRevenue.map(r => r.rep).filter(Boolean))];
       const repSel = root.getElementById('repFilter');
-      repSel.innerHTML = reps.map(r => `<option value="${r}">${r}</option>`).join('');
+      repSel.innerHTML = reps.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
       repSel.value = reps.includes(repFilterVal) ? repFilterVal : '전체';
       repFilterVal = repSel.value;
     }
@@ -5802,17 +5851,14 @@
     // 최종금액 셀 — 기본은 "확정된 값"처럼 읽기 전용으로 보여주고, 수정 아이콘을 눌러야만 편집 모드로 바뀐다.
     // (기존에는 항상 입력창이 열려 있어 "이게 확정인지 수정 중인지" 구분이 안 된다는 피드백을 반영)
     // 최종금액 수정은 영업 관리에서 담당자가 직접 입력하므로, 매출 관리에서는 조회 전용으로만 보여준다.
+    // (매출 관리는 함수 맨 앞의 관리자 검증을 통과해야만 여기까지 도달하므로, 별도의 담당자용 마스킹은 필요 없다.)
     function renderFinalCell(r){
-      const masked = role === 'staff' && !isStaffSession;
-      if (masked) return `<td class="amount">비공개</td>`;
       return `<td class="amount final-amount-cell"><span class="final-amount-value">${won(r.finalAmount)}</span></td>`;
     }
 
     // 입금 — 계약금/중도금/잔금처럼 여러 번에 걸쳐 들어오는 경우가 많아, 진행률로 보여주고
     // 클릭하면 회차별 내역을 보고 고칠 수 있게 한다. 매출 관리는 관리자 전용 화면이라 항상 전체 관리 가능.
     function renderPaymentCellRev(r){
-      const masked = role === 'staff' && !isStaffSession;
-      if (masked) return `<span class="pay-cell-btn masked mono">****,***</span>`;
       const total = totalDueRev(r);
       if (!total) return `<span class="pay-cell-btn masked">-</span>`;
       const paid = paidAmountRev(r);
@@ -5904,28 +5950,33 @@
         (!unpaidOnlyVal || (r.confirmed && !isFullyPaidRev(r)))
       );
 
+      // 수주 확정이 취소된 건(입금 이력 보존을 위해 confirmed:false로 REVENUE_ALL에 남아있는 건)은
+      // 더 이상 매출이 아니므로, 매출 건수·매출액 등 통계 계산에서는 제외한다. 표에는 참고용으로
+      // 그대로 남겨두되(입금 이력 확인용), "(확정취소)" 표시로 구분해서 헷갈리지 않게 한다.
+      const confirmedList = list.filter(r => r.confirmed);
+
       // 상단 통계 카드는 "내역" 표에서 고른 기간 단위(월별/분기별/연도별)의 "가장 최근 기간" 값만 반영한다.
       // (이전에는 필터링된 전체 목록 합계를 그대로 썼기 때문에 탭을 눌러도 숫자가 안 바뀌는 문제가 있었다.)
-      const periodKeys = [...new Set(list.map(groupKey))].sort((a,b) => b.localeCompare(a));
+      const periodKeys = [...new Set(confirmedList.map(groupKey))].sort((a,b) => b.localeCompare(a));
       const latestKey = periodKeys[0] || null;
-      const periodList = latestKey ? list.filter(r => groupKey(r) === latestKey) : [];
+      const periodList = latestKey ? confirmedList.filter(r => groupKey(r) === latestKey) : [];
 
       const count = periodList.length;
       const total = periodList.reduce((s,r) => s + r.finalAmount, 0);
       // 부분입금 중인 건도 실제로 들어온 만큼은 "입금완료" 합계에 반영하고, 나머지는 미수금으로 잡는다.
       const paid = periodList.reduce((s,r) => s + paidAmountRev(r), 0);
-      const unpaid = periodList.filter(r => r.confirmed).reduce((s,r) => s + Math.max(0, totalDueRev(r) - paidAmountRev(r)), 0);
+      const unpaid = periodList.reduce((s,r) => s + Math.max(0, totalDueRev(r) - paidAmountRev(r)), 0);
 
       root.getElementById('countLabel').textContent = latestKey ? `${groupLabel(latestKey)} 매출 건수` : `${PERIOD_LABEL[period]} 매출 건수`;
       root.getElementById('periodLabel').textContent = latestKey ? `${groupLabel(latestKey)} 매출액` : `${PERIOD_LABEL[period]} 매출액`;
       root.getElementById('statCount').textContent = `${count}건`;
-      root.getElementById('statTotal').textContent = maskWon(total);
-      root.getElementById('statPaid').textContent = maskWon(paid);
-      root.getElementById('statUnpaid').textContent = maskWon(unpaid);
+      root.getElementById('statTotal').textContent = won(total);
+      root.getElementById('statPaid').textContent = won(paid);
+      root.getElementById('statUnpaid').textContent = won(unpaid);
 
       // 통계 카드 밑에 짧은 코멘트(이전 기간 대비 증감 · 비중)를 붙여 한눈에 흐름이 보이게 한다.
       const prevKey = periodKeys[1] || null;
-      const prevList = prevKey ? list.filter(r => groupKey(r) === prevKey) : [];
+      const prevList = prevKey ? confirmedList.filter(r => groupKey(r) === prevKey) : [];
       const prevCount = prevList.length;
       const prevTotal = prevList.reduce((s,r) => s + r.finalAmount, 0);
       const deltaLabelRev = periodDeltaDefs(period, false)[0].label;
@@ -5946,8 +5997,6 @@
       });
       const groupKeysSorted = [...groups.keys()].sort((a,b) => b.localeCompare(a));
 
-      const masked = role === 'staff' && !isStaffSession;
-
       const tbody = root.getElementById('tbody');
       tbody.innerHTML = '';
       if (!groupKeysSorted.length) {
@@ -5955,29 +6004,33 @@
       } else {
         groupKeysSorted.forEach(key => {
           const rows = groups.get(key).sort((a,b) => b.date.localeCompare(a.date));
-          const groupQuoteTotal = rows.reduce((s,r) => s + r.quoteAmount, 0);
-          const groupFinalTotal = rows.reduce((s,r) => s + r.finalAmount, 0);
+          // 그룹 소계는 확정취소 건을 뺀 값으로 — 표에 나열되는 실제 행 수와는 다를 수 있다(의도된 동작).
+          const confirmedRows = rows.filter(r => r.confirmed);
+          const groupQuoteTotal = confirmedRows.reduce((s,r) => s + r.quoteAmount, 0);
+          const groupFinalTotal = confirmedRows.reduce((s,r) => s + r.finalAmount, 0);
 
           const headTr = document.createElement('tr');
           headTr.className = 'group-head';
           headTr.innerHTML = `
-            <td colspan="5">${groupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${rows.length}건</span></td>
-            <td class="amount">${maskWon(groupQuoteTotal)}</td>
-            <td class="amount">${maskWon(groupFinalTotal)}</td>
+            <td colspan="5">${groupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${confirmedRows.length}건</span></td>
+            <td class="amount">${won(groupQuoteTotal)}</td>
+            <td class="amount">${won(groupFinalTotal)}</td>
             <td class="center"></td>
           `;
           tbody.appendChild(headTr);
 
           rows.forEach(r => {
             const tr = document.createElement('tr');
+            if (!r.confirmed) tr.className = 'revenue-cancelled-row';
             const finalCell = renderFinalCell(r);
+            const cancelledTag = r.confirmed ? '' : ' <span class="cancelled-tag" title="수주 확정이 취소된 건입니다. 입금 이력 확인용으로만 남아있고, 매출 통계에는 반영되지 않습니다.">(확정취소)</span>';
             tr.innerHTML = `
               <td class="mono">${r.date}</td>
-              <td>${brandLabel(r.brand)}</td>
-              <td>${r.client}</td>
-              <td>${r.store}</td>
-              <td>${r.rep || '-'}</td>
-              <td class="amount">${maskWon(r.quoteAmount)}</td>
+              <td>${escapeHtml(brandLabel(r.brand))}</td>
+              <td>${escapeHtml(r.client)}${cancelledTag}</td>
+              <td>${escapeHtml(r.store)}</td>
+              <td>${escapeHtml(r.rep || '-')}</td>
+              <td class="amount">${won(r.quoteAmount)}</td>
               ${finalCell}
               <td class="center">${renderPaymentCellRev(r)}</td>
             `;
@@ -5985,13 +6038,13 @@
           });
         });
 
-        const grandQuoteTotal = list.reduce((s,r) => s + r.quoteAmount, 0);
+        const grandQuoteTotal = confirmedList.reduce((s,r) => s + r.quoteAmount, 0);
         const grandTr = document.createElement('tr');
         grandTr.className = 'grand-total';
         grandTr.innerHTML = `
-          <td colspan="5">합계 <span style="font-weight:400; color:var(--text-faint)">· ${list.length}건</span></td>
-          <td class="amount">${maskWon(grandQuoteTotal)}</td>
-          <td class="amount">${maskWon(total)}</td>
+          <td colspan="5">합계 <span style="font-weight:400; color:var(--text-faint)">· ${confirmedList.length}건</span></td>
+          <td class="amount">${won(grandQuoteTotal)}</td>
+          <td class="amount">${won(total)}</td>
           <td class="center"></td>
         `;
         tbody.appendChild(grandTr);
@@ -6000,7 +6053,7 @@
         if (btn.classList.contains('masked')) return;
         btn.addEventListener('click', () => openPayModalRev(btn.dataset.id));
       });
-      const totalCount = list.length;
+      const totalCount = confirmedList.length;
       root.getElementById('tableFoot').textContent = `${PERIOD_LABEL[period]} 기준 · ${groupKeysSorted.length}개 그룹 · 브랜드: ${brandFilterVal} · 발주처: ${clientFilterVal} · 담당자: ${repFilterVal} · 총 ${totalCount}건`;
 
       renderAnalysis();
@@ -6070,13 +6123,10 @@
     });
 
     function renderTargets(){
+      // 이 함수에 도달했다는 것 자체가 이미 맨 위의 관리자 검증을 통과했다는 뜻이므로
+      // (매출 관리는 관리자만 접근 가능), 여기서 다시 role을 확인할 필요가 없다.
       const panel = root.getElementById('targetPanel');
       const locked = root.getElementById('targetLocked');
-      if (role !== 'owner') {
-        panel.style.display = 'none';
-        locked.style.display = 'block';
-        return;
-      }
       panel.style.display = '';
       locked.style.display = 'none';
 
@@ -6087,7 +6137,9 @@
         return;
       }
       body.innerHTML = rows.map(t => {
-        const actual = rawRevenue.filter(r => keyForType(r, t.type) === t.key).reduce((s,r) => s + r.finalAmount, 0);
+        // 수주 확정이 취소된 건(입금 이력 보존을 위해 REVENUE_ALL에는 confirmed:false로 남아있는 건)은
+        // 더 이상 매출이 아니므로 목표 달성 실적에서 반드시 제외한다.
+        const actual = rawRevenue.filter(r => keyForType(r, t.type) === t.key && r.confirmed).reduce((s,r) => s + r.finalAmount, 0);
         const pct = t.amount > 0 ? (actual / t.amount * 100) : 0;
         // 100%를 넘으면(목표 초과 달성) 막대는 어차피 꽉 찬 채로 보이므로 색과 숫자를 따로 강조해서
         // "딱 100%"와 "훨씬 넘긴 것"을 구분되게 한다.
@@ -6136,19 +6188,17 @@
     }
 
     function renderAnalysis(){
+      // renderTargets()와 마찬가지로, 이 함수는 이미 관리자 검증을 통과한 세션에서만 호출된다.
       const panel = root.getElementById('analysisPanel');
       const locked = root.getElementById('analysisLocked');
-      if (role !== 'owner') {
-        panel.style.display = 'none';
-        locked.style.display = 'block';
-        return;
-      }
       panel.style.display = '';
       locked.style.display = 'none';
 
       // 매출 분석은 "내역" 탭의 브랜드·발주처·담당자 필터와 완전히 독립적으로 항상 전체 데이터를 기준으로 본다
       // (탭으로 나눈 이상, 내역에서 걸어둔 필터가 안 보이는 채로 분석에 몰래 적용되면 혼란만 준다).
-      const analysisRows = rawRevenue;
+      // 다만 수주 확정이 취소된 건(입금 이력 보존을 위해 confirmed:false로 남아있는 건)은
+      // 더 이상 매출이 아니므로 매출 분석(추이·순위·입금률 등) 전체에서 제외한다.
+      const analysisRows = rawRevenue.filter(r => r.confirmed);
 
       const buckets = new Map(); // key -> { amt, count, paidAmt, unpaidAmt, items }
       analysisRows.forEach(r => {
@@ -6269,8 +6319,7 @@
 
     const exportBtn = root.getElementById('revenueExportBtn');
     if (exportBtn) {
-      // 엑셀 내보내기는 관리자 계정에서만 사용 — 그 외 계정에서는 버튼 자체를 숨긴다.
-      if (role !== 'owner') exportBtn.style.display = 'none';
+      // 엑셀 내보내기는 관리자 계정에서만 사용 — 매출 관리 화면 자체가 이미 관리자 전용이므로 별도 숨김 처리는 불필요.
       exportBtn.addEventListener('click', () => {
         try {
           const list = rawRevenue.filter(r =>
@@ -6326,7 +6375,7 @@
     }
 
     function aliasChipsHtml(list, kind){
-      return (list || []).map((a, i) => `<span class="alias-chip">${a} <span class="x" data-kind="${kind}" data-idx="${i}">✕</span></span>`).join('');
+      return (list || []).map((a, i) => `<span class="alias-chip">${escapeHtml(a)} <span class="x" data-kind="${kind}" data-idx="${i}">✕</span></span>`).join('');
     }
 
     function renderRowView(b){
@@ -6334,17 +6383,17 @@
       row.className = 'b-row';
       row.innerHTML = `
         <div class="b-row-top">
-          <span class="code-badge">${b.code}</span>
+          <span class="code-badge">${escapeHtml(b.code)}</span>
           <div class="b-row-name">
-            <div class="name-main">${b.name}</div>
-            ${(b.aliases && b.aliases.length) ? `<div class="chip-list">${b.aliases.map(a => `<span class="chip">${a}</span>`).join('')}</div>` : ''}
+            <div class="name-main">${escapeHtml(b.name)}</div>
+            ${(b.aliases && b.aliases.length) ? `<div class="chip-list">${b.aliases.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join('')}</div>` : ''}
           </div>
           <button type="button" class="edit-link">수정</button>
         </div>
         <div class="b-row-client">
           <span class="client-label">발주처</span>
           ${b.client
-            ? `${b.clientCode ? `<span class="code-badge">${b.clientCode}</span>` : ''}<span class="client-main">${b.client}</span>${(b.clientAliases && b.clientAliases.length) ? `<div class="chip-list">${b.clientAliases.map(a => `<span class="chip">${a}</span>`).join('')}</div>` : ''}`
+            ? `${b.clientCode ? `<span class="code-badge">${escapeHtml(b.clientCode)}</span>` : ''}<span class="client-main">${escapeHtml(b.client)}</span>${(b.clientAliases && b.clientAliases.length) ? `<div class="chip-list">${b.clientAliases.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join('')}</div>` : ''}`
             : `<span class="client-empty">매장마다 다름</span>`}
         </div>
       `;
@@ -6363,10 +6412,10 @@
       function paint(){
         row.innerHTML = `
           <div class="edit-grid">
-            <div class="edit-field"><label>코드</label><input class="e-code" value="${b.code}"></div>
-            <div class="edit-field"><label>브랜드명 (대표)</label><input class="e-name" value="${b.name}"></div>
-            <div class="edit-field"><label>발주처 (대표) — 매장마다 다르면 비워두세요</label><input class="e-client" value="${b.client || ''}"></div>
-            <div class="edit-field"><label>발주처 코드 (선택) — 필요할 때만 입력</label><input class="e-clientcode" value="${b.clientCode || ''}" placeholder="예: KK"></div>
+            <div class="edit-field"><label>코드</label><input class="e-code" value="${escapeHtml(b.code)}"></div>
+            <div class="edit-field"><label>브랜드명 (대표)</label><input class="e-name" value="${escapeHtml(b.name)}"></div>
+            <div class="edit-field"><label>발주처 (대표) — 매장마다 다르면 비워두세요</label><input class="e-client" value="${escapeHtml(b.client || '')}"></div>
+            <div class="edit-field"><label>발주처 코드 (선택) — 필요할 때만 입력</label><input class="e-clientcode" value="${escapeHtml(b.clientCode || '')}" placeholder="예: KK"></div>
             <div class="edit-field full">
               <label>브랜드 별칭 — 다르게 입력돼도 이 브랜드로 합쳐질 이름들</label>
               <div class="alias-editor">
