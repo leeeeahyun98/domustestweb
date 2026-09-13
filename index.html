@@ -732,12 +732,6 @@
           </div>
         </div>
 
-        <div class="mini-stats-row">
-          <div class="mini-stat"><div class="mini-label">입금률 (매출액 대비)</div><div class="mini-num" id="collectRate">-</div></div>
-          <div class="mini-stat"><div class="mini-label">미입금 건수 · 금액</div><div class="mini-num" id="unpaidSummary">-</div></div>
-          <div class="mini-stat"><div class="mini-label">최다 매출 브랜드</div><div class="mini-num" id="topBrand">-</div></div>
-        </div>
-
         <div class="analysis-section-label">매출 인사이트</div>
         <div class="analysis-card analysis-insights-card">
           <div id="revInsightsList"></div>
@@ -3334,12 +3328,6 @@
     .mini-table td.mt-cmp{ width:24%; text-align:right; }
     .bar-track{ height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
     .bar-fill{ height:100%; background:var(--accent); border-radius:4px; }
-
-    .mini-stats-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; padding:0 18px 18px; }
-    @media (max-width:720px){ .mini-stats-row{ grid-template-columns:1fr; } }
-    .mini-stat{ background:var(--surface-2); border:1px solid var(--border); border-radius:14px; padding:12px 14px; }
-    .mini-stat .mini-label{ font-size:11.5px; color:var(--text-faint); }
-    .mini-stat .mini-num{ font-size:16px; font-weight:700; margin-top:3px; font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; }
 
     .analysis-locked{ padding:28px; text-align:center; color:var(--text-faint); font-size:13px; }
 
@@ -6268,23 +6256,6 @@
       renderRankListRev('revBrandRankList', brandLatestList, analysisBrandRankSort, '');
       renderRankListRev('revClientRankList', clientLatestList, analysisClientRankSort, 'rep');
       renderRevInsights(analysisRows, latestKey, brandLatestList, clientLatestList);
-
-      // 입금률 = 이 기간 매출액(전체 확정금액 합) 대비, 실제로 입금된 금액의 비율.
-      // (이전엔 "확정 건" 중 입금 비율이라 분모가 작아 실제보다 높게 나오는 문제가 있었다.)
-      const salesTotal = analysisRows.reduce((s,r)=>s+r.finalAmount,0);
-      // 여기도 r.paid(전액입금 여부) 단독 판정 대신 부분입금까지 반영한 실제 입금액을 더한다.
-      const paidTotal = analysisRows.reduce((s,r)=>s+paidAmountRev(r),0);
-      const collectRate = salesTotal > 0 ? (paidTotal / salesTotal * 100) : 0;
-      root.getElementById('collectRate').textContent = `${collectRate.toFixed(0)}%`;
-
-      const unpaidList = analysisRows.filter(r => r.confirmed && !isFullyPaidRev(r));
-      const unpaidAmt = unpaidList.reduce((s,r)=>s+Math.max(0, totalDueRev(r) - paidAmountRev(r)),0);
-      root.getElementById('unpaidSummary').textContent = `${unpaidList.length}건 · ${won(unpaidAmt)}`;
-
-      const allBrandTotals = new Map();
-      analysisRows.forEach(r => { const b = brandLabel(r.brand); allBrandTotals.set(b, (allBrandTotals.get(b) || 0) + r.finalAmount); });
-      const topBrandEntry = [...allBrandTotals.entries()].sort((a,b) => b[1]-a[1])[0];
-      root.getElementById('topBrand').textContent = topBrandEntry ? topBrandEntry[0] : '-';
     }
 
     root.getElementById('revAnalysisPeriodTabs').addEventListener('click', (e) => {
