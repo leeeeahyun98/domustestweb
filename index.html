@@ -2497,7 +2497,7 @@
 
     .urgent-tag{ font-size:10.5px; font-weight:700; color:var(--urgent); background:var(--urgent-soft); border-radius:5px; padding:1px 6px; margin-left:6px; }
 
-    .amount{ font-weight:600; }
+    .amount{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric:tabular-nums; font-weight:600; text-align:right; }
     .amount.masked{ color:var(--text-faint); letter-spacing:.06em; }
     .amount.muted{ color:var(--text-faint); font-weight:400; }
 
@@ -2604,6 +2604,8 @@
 
     tr.group-head td{ background:var(--surface-2); font-weight:700; font-size:12.5px; color:var(--text-muted); padding:9px 18px; }
     tr.group-head td.amount{ color:var(--text); }
+    tr.group-head:hover td{ background:var(--surface-3); }
+    tr.group-head .group-caret{ display:inline-block; width:12px; color:var(--text-faint); }
 
     tr.grand-total td{
       background:var(--surface-2); font-weight:700; font-size:13px; color:var(--text);
@@ -3210,6 +3212,8 @@
 
     tr.group-head td{ background:var(--surface-2); font-weight:700; font-size:12.5px; color:var(--text-muted); padding:9px 18px; }
     tr.group-head td.amount{ color:var(--text); }
+    tr.group-head:hover td{ background:var(--surface-3); }
+    tr.group-head .group-caret{ display:inline-block; width:12px; color:var(--text-faint); }
 
     tr.grand-total td{
       background:var(--surface-2); font-weight:700; font-size:13px; color:var(--text);
@@ -4081,6 +4085,10 @@
     // 매출 관리의 "내역"과 동일하게 — 개별 월 하나만 골라보는 필터 대신,
     // 월별/분기별/연도별 단위로 전체 기간을 그룹핑해서 최신 순으로 보여준다.
     let listPeriod = 'month';
+    // 내역이 많아지면 계속 스크롤을 내려야 하는 게 불편하다는 피드백을 반영해,
+    // 기간별 묶음을 아코디언처럼 접고 펼 수 있게 한다. 처음 렌더링될 때 딱 한 번만
+    // "가장 최근 묶음"을 기본으로 펼쳐두고, 그 뒤로는 사용자가 직접 누른 것만 반영한다.
+    let expandedGroups = null;
 
     if (isStaffSession) {
       // 담당자 실제 로그인: 담당자 필터를 숨긴다 (이미 본인 것만 보임)
@@ -4215,7 +4223,7 @@
           <td>${o.rep}</td>
           <td class="mono">${dispDate(o.orderDate)}</td>
           <td class="mono">${dispDate(o.confirmDate) || '-'}</td>
-          <td>${dispDate(o.next)}</td>
+          <td class="mono">${dispDate(o.next)}</td>
           <td class="amount" style="text-align:right">${fmtWonMasked(o.amount)}</td>
           <td style="text-align:right">${renderFinalAmount(o.finalAmount)}</td>
           <td class="center">${renderPaymentCell(o)}</td>
@@ -4237,21 +4245,29 @@
           groups.get(key).push(o);
         });
         const groupKeysSorted = [...groups.keys()].sort((a,b) => b.localeCompare(a));
+        // 처음 렌더링될 때만 "가장 최근 묶음"을 기본으로 펼쳐둔다. 그 이후로는
+        // expandedGroups가 사용자의 클릭 이력을 그대로 담고 있으므로 다시 초기화하지 않는다.
+        if (expandedGroups === null) {
+          expandedGroups = new Set(groupKeysSorted.length ? [groupKeysSorted[0]] : []);
+        }
         let rowIdx = 0;
         const html = [];
         groupKeysSorted.forEach(key => {
           const rows = groups.get(key).sort((a,b) => b.orderDate.localeCompare(a.orderDate));
           const groupQuoteTotal = rows.reduce((s,o) => s + (o.amount || 0), 0);
           const groupFinalTotal = rows.reduce((s,o) => s + (o.finalAmount || 0), 0);
+          const isExpanded = expandedGroups.has(key);
           html.push(`
-            <tr class="group-head">
-              <td colspan="6">${listGroupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${rows.length}건</span></td>
+            <tr class="group-head" data-gkey="${escapeHtml(key)}" style="cursor:pointer">
+              <td colspan="6"><span class="group-caret">${isExpanded ? '▾' : '▸'}</span> ${listGroupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${rows.length}건</span></td>
               <td class="amount">${fmtWonMasked(groupQuoteTotal)}</td>
               <td class="amount">${fmtWonMasked(groupFinalTotal)}</td>
               <td class="center"></td><td class="col-manage"></td>
             </tr>
           `);
-          rows.forEach(o => { html.push(orderRowHtml(o, rowIdx)); rowIdx++; });
+          if (isExpanded) {
+            rows.forEach(o => { html.push(orderRowHtml(o, rowIdx)); rowIdx++; });
+          }
         });
         const grandQuoteTotal = list.reduce((s,o) => s + (o.amount || 0), 0);
         const grandFinalTotal = list.reduce((s,o) => s + (o.finalAmount || 0), 0);
@@ -4266,11 +4282,18 @@
         tbody.innerHTML = html.join('');
       }
 
+      tbody.querySelectorAll('.group-head').forEach(tr => {
+        tr.addEventListener('click', () => {
+          const key = tr.dataset.gkey;
+          if (expandedGroups.has(key)) expandedGroups.delete(key); else expandedGroups.add(key);
+          render();
+        });
+      });
       tbody.querySelectorAll('.edit-row').forEach(btn => {
-        btn.addEventListener('click', () => { editingId = Number(btn.dataset.id); render(); });
+        btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = Number(btn.dataset.id); render(); });
       });
       tbody.querySelectorAll('.cancel-row').forEach(btn => {
-        btn.addEventListener('click', () => { editingId = null; render(); });
+        btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = null; render(); });
       });
       attachAmountFormatter(tbody.querySelector('.edit-amount'));
       attachAmountFormatter(tbody.querySelector('.edit-finalamount'));
@@ -4322,9 +4345,11 @@
     }
     function renderFinalAmount(n){
       if (n == null) return '<span class="amount muted">미확정</span>';
-      if (!canSeeAmount()) return '<span class="amount masked mono">****,***</span>';
-      return `<span class="amount mono" style="font-weight:600">${fmtWon(n)}</span>`;
+      if (!canSeeAmount()) return '<span class="amount masked">****,***</span>';
+      return `<span class="amount">${fmtWon(n)}</span>`;
     }
+    // 견적금액·수주액 모두 .amount 클래스 하나로 mono(고정폭) 폰트가 자동 적용된다 (salesCSS 참고).
+    // 매출 관리와 동일한 규칙이라 두 화면 어디를 봐도 금액은 같은 스타일로 보인다.
     // 입금 — 계약금/중도금/잔금처럼 여러 번에 걸쳐 들어오는 경우가 실제로 더 많아서,
     // 완료/미입금 두 상태만으로는 부족하다. 얼마나 들어왔는지 진행률로 보여주고,
     // 클릭하면 회차별 내역을 보고(관리자는 수정·삭제도) 새 입금을 바로 추가할 수 있게 한다.
@@ -5609,6 +5634,10 @@
     let clientFilterVal = '전체';
     let repFilterVal = '전체';
     let unpaidOnlyVal = false;
+    // 내역이 많아지면 계속 스크롤을 내려야 하는 게 불편하다는 피드백을 반영해,
+    // 기간별 묶음을 아코디언처럼 접고 펼 수 있게 한다. 처음 렌더링될 때 딱 한 번만
+    // "가장 최근 묶음"을 기본으로 펼쳐두고, 그 뒤로는 사용자가 직접 누른 것만 반영한다.
+    let expandedGroups = null;
     let analysisUnit = 'month';
     // 매출액 추이 / 매출 건수 추이 각각 독립적으로 "전체" 또는 특정 브랜드를 선택해서 볼 수 있다.
     let analysisAmtEntityFilter = '';
@@ -5984,6 +6013,11 @@
         groups.get(key).push(r);
       });
       const groupKeysSorted = [...groups.keys()].sort((a,b) => b.localeCompare(a));
+      // 처음 렌더링될 때만 "가장 최근 묶음"을 기본으로 펼쳐둔다. 그 이후로는
+      // expandedGroups가 사용자의 클릭 이력을 그대로 담고 있으므로 다시 초기화하지 않는다.
+      if (expandedGroups === null) {
+        expandedGroups = new Set(groupKeysSorted.length ? [groupKeysSorted[0]] : []);
+      }
 
       const tbody = root.getElementById('tbody');
       tbody.innerHTML = '';
@@ -5996,34 +6030,42 @@
           const confirmedRows = rows.filter(r => r.confirmed);
           const groupQuoteTotal = confirmedRows.reduce((s,r) => s + r.quoteAmount, 0);
           const groupFinalTotal = confirmedRows.reduce((s,r) => s + r.finalAmount, 0);
+          const isExpanded = expandedGroups.has(key);
 
           const headTr = document.createElement('tr');
           headTr.className = 'group-head';
+          headTr.style.cursor = 'pointer';
           headTr.innerHTML = `
-            <td colspan="5">${groupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${confirmedRows.length}건</span></td>
+            <td colspan="5"><span class="group-caret">${isExpanded ? '▾' : '▸'}</span> ${groupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${confirmedRows.length}건</span></td>
             <td class="amount">${won(groupQuoteTotal)}</td>
             <td class="amount">${won(groupFinalTotal)}</td>
             <td class="center"></td>
           `;
+          headTr.addEventListener('click', () => {
+            if (expandedGroups.has(key)) expandedGroups.delete(key); else expandedGroups.add(key);
+            render();
+          });
           tbody.appendChild(headTr);
 
-          rows.forEach(r => {
-            const tr = document.createElement('tr');
-            if (!r.confirmed) tr.className = 'revenue-cancelled-row';
-            const finalCell = renderFinalCell(r);
-            const cancelledTag = r.confirmed ? '' : ' <span class="cancelled-tag" title="수주 확정이 취소된 건입니다. 입금 이력 확인용으로만 남아있고, 매출 통계에는 반영되지 않습니다.">(확정취소)</span>';
-            tr.innerHTML = `
-              <td class="mono">${r.date}</td>
-              <td>${escapeHtml(brandLabel(r.brand))}</td>
-              <td>${escapeHtml(r.client)}${cancelledTag}</td>
-              <td>${escapeHtml(r.store)}</td>
-              <td>${escapeHtml(r.rep || '-')}</td>
-              <td class="amount">${won(r.quoteAmount)}</td>
-              ${finalCell}
-              <td class="center">${renderPaymentCellRev(r)}</td>
-            `;
-            tbody.appendChild(tr);
-          });
+          if (isExpanded) {
+            rows.forEach(r => {
+              const tr = document.createElement('tr');
+              if (!r.confirmed) tr.className = 'revenue-cancelled-row';
+              const finalCell = renderFinalCell(r);
+              const cancelledTag = r.confirmed ? '' : ' <span class="cancelled-tag" title="수주 확정이 취소된 건입니다. 입금 이력 확인용으로만 남아있고, 매출 통계에는 반영되지 않습니다.">(확정취소)</span>';
+              tr.innerHTML = `
+                <td class="mono">${r.date}</td>
+                <td>${escapeHtml(brandLabel(r.brand))}</td>
+                <td>${escapeHtml(r.client)}${cancelledTag}</td>
+                <td>${escapeHtml(r.store)}</td>
+                <td>${escapeHtml(r.rep || '-')}</td>
+                <td class="amount">${won(r.quoteAmount)}</td>
+                ${finalCell}
+                <td class="center">${renderPaymentCellRev(r)}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
         });
 
         const grandQuoteTotal = confirmedList.reduce((s,r) => s + r.quoteAmount, 0);
