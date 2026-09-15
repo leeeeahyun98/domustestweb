@@ -2352,31 +2352,32 @@
       background:var(--accent-soft); color:var(--accent); border:1px solid transparent;
     }
 
-    /* 모니터(가로 화면)에서는 스크롤 없이 달력 전체가 한 화면에 들어오도록 고정 높이를 쓰고,
-       좁은 화면(휴대폰 등)에서는 다시 스크롤 가능한 레이아웃으로 되돌린다. */
-      /* 아이폰/갤럭시 기본 캘린더처럼 한 화면(스크롤 없이)에 7칸 x 6주 그리드가 화면
-         전체 높이를 꽉 채우며 들어온다 — 데스크톱/TV와 같은 고정 그리드 방식을 쓰고,
-         칸 안 내용은 다 안 보여도 괜찮다(잘려도 됨); 날짜를 탭하면 그날 전체 목록이
-         모달로 뜨니 자세한 내용은 거기서 본다. */
-      .cal-grid{ grid-template-rows:repeat(6, 1fr); }
-      .day-cell{ overflow:hidden; padding:3px 3px; gap:1px; }
-      .day-num{ width:18px; height:18px; font-size:12px; }
-      .day-events{ overflow:hidden; gap:1px; }
+    /* 아이폰/갤럭시 기본 캘린더처럼 한 화면(스크롤 없이)에 7칸 x 6주 그리드가 화면 전체
+       높이를 꽉 채우며 들어오고, 칸 안 내용은 다 안 보여도 괜찮게(잘려도 됨) 하는 건
+       "실제 휴대폰(터치 화면 + 좁은 폭)"일 때만이다. 현장 TV(스틱PC)는 화면 폭이 좁게
+       인식될 수 있고, 노트북·모니터도 창을 좁게 줄일 수 있지만 이 두 경우는 절대 잘리면
+       안 되므로(자동 글씨 축소가 항상 적용돼야 함), pointer:coarse(터치)까지 같이 확인하고
+       TV 모드에서는 폭과 무관하게 이 블록 전체가 아예 적용되지 않게 제외한다. */
+    @media (max-width: 900px) and (pointer: coarse){
+      :host(:not(.mode-tv)) .cal-grid{ grid-template-rows:repeat(6, 1fr); }
+      :host(:not(.mode-tv)) .day-cell{ overflow:hidden; padding:3px 3px; gap:1px; }
+      :host(:not(.mode-tv)) .day-num{ width:18px; height:18px; font-size:12px; }
+      :host(:not(.mode-tv)) .day-events{ overflow:hidden; gap:1px; }
       /* 갤럭시/아이폰 캘린더처럼, 이벤트 하나를 한 줄로 압축한다 — 뱃지(수량)와 점포명을
          나란히 붙이고 글씨를 확 줄여서, 세로로 두 줄 쓰던 것보다 훨씬 많은 일정을 한
          칸 안에서 미리보기로 보여준다. 그래도 안 들어가면 잘리는 건 그대로 두고,
          날짜를 탭하면 전체 목록을 볼 수 있다. */
-      .ev-chip{
+      :host(:not(.mode-tv)) .ev-chip{
         font-size:9px; overflow:hidden; flex-direction:row; align-items:center;
         gap:1px; padding:1px 3px 1px 4px; border-radius:3px; border-left-width:2px;
       }
-      .chip-row1{ flex:none; padding-top:0; }
+      :host(:not(.mode-tv)) .chip-row1{ flex:none; padding-top:0; }
       /* 뱃지를 배경 있는 박스로 두면 그 자체가 자리를 많이 차지해서, 정작 중요한
          점포명이 보일 폭이 확 줄어든다. 모바일 미리보기에서는 박스를 없애고
          숫자만 옅은 색으로 짧게 붙여서 점포명에 폭을 최대한 몰아준다. */
-      .chip-qty{ font-size:8px; padding:0; background:none; color:var(--text-faint); font-weight:700; }
-      .chip-qty::after{ content:'·'; margin-left:2px; color:var(--text-faint); font-weight:400; }
-      .chip-row2{
+      :host(:not(.mode-tv)) .chip-qty{ font-size:8px; padding:0; background:none; color:var(--text-faint); font-weight:700; }
+      :host(:not(.mode-tv)) .chip-qty::after{ content:'·'; margin-left:2px; color:var(--text-faint); font-weight:400; }
+      :host(:not(.mode-tv)) .chip-row2{
         flex:1; width:auto; min-width:0; font-size:9px; line-height:1.35;
         white-space:nowrap; word-break:normal; overflow-wrap:normal; overflow:hidden; text-overflow:ellipsis;
       }
@@ -3899,9 +3900,17 @@
       // 모바일(휴대폰)은 반대로, 아이폰/갤럭시 기본 캘린더처럼 칸 크기·글씨 크기를 작게
       // 고정해두고 다 안 들어가면 잘리는 걸 그대로 둔다 — 날짜를 탭하면 그날 전체 목록을
       // 볼 수 있으니, 굳이 글씨를 알아보기 힘들 정도로 줄이면서까지 다 담을 필요는 없다.
+      // 단, "화면 폭이 좁다"만으로 휴대폰이라고 판단하면 안 된다 — 현장 TV(스틱PC)는
+      // 실제 해상도가 낮게 잡혀 폭이 좁게 인식될 수 있고, 노트북/모니터도 창을 좁게 줄일
+      // 수 있는데 이 둘은 절대 잘리면 안 된다. 그래서 (1) TV 모드가 아니고, (2) 터치
+      // 화면(pointer:coarse, 마우스로 조작하는 노트북/모니터는 해당 안 됨)일 때만
+      // "잘려도 되는 휴대폰"으로 취급한다 — 위 mobile CSS(@media ... and (pointer:coarse))와
+      // 정확히 같은 조건이어야 한다.
       const raf = window.requestAnimationFrame || ((fn) => setTimeout(fn, 0));
       raf(() => {
-        const isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+        const isTv = scheduleMode === 'tv';
+        const isMobile = !isTv && window.matchMedia &&
+          window.matchMedia('(max-width: 900px) and (pointer: coarse)').matches;
         const wraps = [...grid.querySelectorAll('.day-events')];
         function allFit(scale){
           grid.style.setProperty('--day-scale', String(scale));
@@ -3910,15 +3919,19 @@
         if (isMobile) {
           allFit(1);
         } else if (!allFit(1)) {
-          let lo = 0.4, hi = 1, best = 0.4;
-          for (let i = 0; i < 12; i++) {
+          // 해상도가 아주 낮은 화면(현장 스틱PC 등)에서는 칸 자체가 작아서, 예전 최소
+          // 배율(0.4)로도 다 안 들어가는 경우가 실제로 있었다("절대 잘리면 안 된다"는
+          // 요구 위반). 글씨가 다소 작아지더라도 잘리는 것보단 나으므로, 최소 배율을
+          // 훨씬 낮춰서(0.15) 웬만한 해상도·일정 개수에서도 끝까지 줄여서 다 담는다.
+          let lo = 0.15, hi = 1, best = 0.15;
+          for (let i = 0; i < 16; i++) {
             const mid = (lo + hi) / 2;
             if (allFit(mid)) { best = mid; lo = mid; } else { hi = mid; }
           }
           allFit(best);
         }
         // 모바일은 잘리는 게 정상이라 "더 있음" 표시를 굳이 띄우지 않는다(칸마다 항상 켜져
-        // 있으면 오히려 시끄럽다). 모니터/TV는 극단적으로 일정이 많아 최소 배율(0.4)로도
+        // 있으면 오히려 시끄럽다). 모니터/TV는 극단적으로 일정이 많아 최소 배율(0.15)로도
         // 다 담기지 않는 경우에 대비한 안전장치로만 표시한다.
         grid.querySelectorAll('.day-cell').forEach(cell => {
           const w = cell.querySelector('.day-events');
