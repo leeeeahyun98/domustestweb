@@ -2182,9 +2182,14 @@
     /* 글씨체를 내용(일정 텍스트)과 맞춰 너무 두껍지 않게(600→400), 크기는 아주 조금만 키운다. */
     :host(.mode-tv) .day-num{
       font-size:calc(var(--tv-res-scale, 1) * 18px); font-weight:400;
-      width:calc(var(--tv-res-scale, 1) * 24px); height:calc(var(--tv-res-scale, 1) * 24px);
+      /* 오늘 배지(원)를 없앤 뒤로는 박스 안에 숫자를 가운데 정렬할 이유가 없다 —
+         고정 너비(width) 박스 안에서 가운데 정렬하면 "2"와 "24"처럼 자릿수가 다를 때
+         실제 글자 시작 위치가 서로 달라져서(연휴 라벨·작업량 박스와 왼쪽이 안 맞음),
+         왼쪽 정렬되는 일반 텍스트로 바꾼다. */
+      width:auto; height:auto; display:block;
       /* 날짜 숫자가 칸 맨 위 테두리에 딱 붙어 있지 않고, 아래 일정(작업량 박스)과
-         비슷한 높이에 오도록 살짝 안쪽으로 내려서(위·왼쪽 여백) 배치한다. */
+         비슷한 높이에 오도록 살짝 안쪽으로 내려서(위·왼쪽 여백) 배치한다. 연휴 라벨·
+         작업량 박스와 왼쪽 시작점이 같도록 margin-left 값을 그대로 맞춘다. */
       margin:calc(var(--tv-res-scale, 1) * 3px) 0 0 calc(var(--tv-res-scale, 1) * 2px);
     }
     .day-cell.is-today .day-num{ background:var(--accent); color:#fff; }
@@ -2200,7 +2205,10 @@
     /* 연휴 라벨은 날짜 칸 안에서 참고 정보일 뿐, 실제 작업 내용(.chip-row2)보다 눈에 덜 띄어야 한다.
        일반 모드는 다른 화면의 보조 텍스트와 같은 11px을 쓰고, 현장(TV) 모드만 다시 키운다. */
     .holiday-label{ flex:none; font-size:11px; font-weight:700; color:#ff6b64; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    :host(.mode-tv) .holiday-label{ font-size:calc(var(--tv-scale, 1) * 12px); font-weight:600; color:var(--tv-red); }
+    :host(.mode-tv) .holiday-label{
+      font-size:calc(var(--tv-scale, 1) * 12px); font-weight:400; color:var(--tv-red);
+      margin-left:calc(var(--tv-res-scale, 1) * 2px);
+    }
 
     /* 칸에 다 담기지 않는 날은 잘라내지 않고 세로로 스크롤해서 모든 작업이 다 보이게 한다
        (날짜 숫자를 작게 줄인 것도 같은 이유 — 내용이 더 중요하다). */
@@ -2229,7 +2237,10 @@
          뱃지 위치는 원래대로 글씨 시작점(맨 위)에 맞춘다. */
       font-size:calc(var(--tv-scale, 1) * 14px); background:none; color:#fff;
       border:none;
-      padding:calc(var(--tv-scale, 1) * 3px) calc(var(--tv-scale, 1) * 5px);
+      /* 왼쪽 여백만 날짜 숫자·연휴 라벨과 같은 값(해상도 배율 * 2px)으로 맞춰서
+         작업량 박스·내용 글자의 왼쪽 시작점이 위 두 요소와 정확히 일치하게 한다
+         (오른쪽/위아래 여백은 그대로 내용량에 맞춰 줄어드는 배율을 쓴다). */
+      padding:calc(var(--tv-scale, 1) * 3px) calc(var(--tv-scale, 1) * 5px) calc(var(--tv-scale, 1) * 3px) calc(var(--tv-res-scale, 1) * 2px);
       gap:calc(var(--tv-scale, 1) * 4px);
       align-items:flex-start;
     }
