@@ -2068,7 +2068,7 @@
     :host(.mode-tv) .topbar{
       justify-content:space-between;
       padding-bottom:calc(var(--tv-res-scale, 1) * 6px);
-      border-bottom:1px solid var(--border);
+      border-bottom:0.5px solid var(--border);
     }
     /* 오른쪽 위 시각(26px)과 크기를 맞춘다. */
     :host(.mode-tv) .tv-date{ display:block; font-size:calc(var(--tv-res-scale, 1) * 18px); font-weight:600; color:var(--text); letter-spacing:-.01em; }
@@ -2076,7 +2076,7 @@
     :host(.mode-tv) .clock{ cursor:pointer; }
     /* 메뉴 버튼이 42px로 커진 만큼 시각 옆 여백도 같이 넉넉하게 넓힌다(안 겹치게). */
     :host(.mode-tv) .topbar-right{ padding-right:50px; }
-    :host(.mode-tv) .board{ padding:4px 6px 0; gap:3px; }
+    :host(.mode-tv) .board{ padding:4px 6px 0; gap:0; }
     /* 좌우위아래 여백 없이 달력이 화면을 꽉 채우도록 한다. */
     :host(.mode-tv) .panel{ border:none; border-radius:0; box-shadow:none; }
     :host(.mode-tv) .cal-head{ padding:6px 10px; }
@@ -2138,8 +2138,9 @@
        맞춰 너무 두껍지 않게(600→400), 크기는 아주 조금만 키운다. */
     :host(.mode-tv) .weekdays div{
       font-size:calc(var(--tv-res-scale, 1) * 15.5px); font-weight:400; color:#ffffff;
-      border-right:1px solid var(--border);
+      border-right:0.5px solid var(--border);
     }
+    :host(.mode-tv) .weekdays{ border-bottom-width:0.5px; }
     :host(.mode-tv) .weekdays div:nth-child(7n){ border-right:none; }
     .weekdays div.sun{ color:#ff6b64; }
     .weekdays div.sat{ color:var(--accent); }
@@ -2170,6 +2171,7 @@
     :host(.mode-tv) .day-cell{
       padding:calc(var(--tv-res-scale, 1) * 4px) calc(var(--tv-res-scale, 1) * 5px);
       gap:calc(var(--tv-res-scale, 1) * 2px);
+      border-right-width:0.5px; border-bottom-width:0.5px;
     }
     /* 오늘은 칸 전체 배경을 흰색으로 채우는 것 자체가 표시라서, 테두리는 따로 필요 없다
        (흰 배경 위에 흰 테두리는 안 보이기도 한다) — 배경은 아래에서 지정. */
