@@ -2054,12 +2054,12 @@
     :host(.mode-tv) .brand{ display:none; }
     :host(.mode-tv) .topbar{ justify-content:space-between; }
     /* 오른쪽 위 시각(26px)과 크기를 맞춘다. */
-    :host(.mode-tv) .tv-date{ display:block; font-size:26px; font-weight:700; color:var(--text); letter-spacing:-.01em; }
-    :host(.mode-tv) .clock .time{ font-size:26px; }
+    :host(.mode-tv) .tv-date{ display:block; font-size:18px; font-weight:700; color:var(--text); letter-spacing:-.01em; }
+    :host(.mode-tv) .clock .time{ font-size:18px; }
     :host(.mode-tv) .clock{ cursor:pointer; }
     /* 메뉴 버튼이 42px로 커진 만큼 시각 옆 여백도 같이 넉넉하게 넓힌다(안 겹치게). */
     :host(.mode-tv) .topbar-right{ padding-right:50px; }
-    :host(.mode-tv) .board{ padding:8px 10px 0; gap:6px; }
+    :host(.mode-tv) .board{ padding:6px 8px 0; gap:4px; }
     /* 좌우위아래 여백 없이 달력이 화면을 꽉 채우도록 한다. */
     :host(.mode-tv) .panel{ border:none; border-radius:0; box-shadow:none; }
     :host(.mode-tv) .cal-head{ padding:6px 10px; }
@@ -2069,17 +2069,11 @@
     :host(.mode-tv) #prevBtn,
     :host(.mode-tv) #nextBtn,
     :host(.mode-tv) .add-holiday-btn{ display:none; }
-    /* 한 주에 내용이 몰려도 잘리지 않도록, 주(행) 높이를 내용에 맞춰 가변으로 두고
-       모자라면 패널 전체를 세로로 스크롤한다(모든 내용이 다 보이는 것이 우선). 다만
-       TV 화면에 스크롤바가 계속 떠 있으면 지저분해 보이므로 막대만 숨긴다(스크롤 동작은 그대로). */
-    :host(.mode-tv) .panel{ overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none; }
-    :host(.mode-tv) .panel::-webkit-scrollbar{ display:none; }
-    /* CSS Grid의 auto 트랙은 내용이 없는 주까지 남는 세로 공간을 똑같이 나눠 가져버려서
-       진짜 "주별 가변 높이"가 되지 않는다 — 그래서 현장(TV) 모드에서는 달력을 grid가 아니라
-       "한 주 = 한 줄"인 세로 flex 목록으로 만들고, 각 줄(cal-week-row) 안에서만 7칸 grid를 쓴다.
-       이러면 각 주가 정말로 자기 내용만큼만 높이를 차지한다. */
-    :host(.mode-tv) .cal-grid{ display:flex; flex-direction:column; flex:none; }
-    .cal-week-row{ display:grid; grid-template-columns:repeat(7,1fr); min-height:110px; }
+    /* 현장(TV) 상시게시 화면은 스크롤 없이 달력 전체가 한 화면에 꽉 차 있어야 하므로,
+       모니터(가로 화면) 일반 모드와 똑같이 이번 달에 필요한 주 수만큼 세로 공간을 균등
+       분할하는 고정 그리드를 쓴다(칸이 넘치면 스크롤하는 대신, 글자 크기를 작게 잡아서
+       칸 안에 다 들어가게 한다). */
+    :host(.mode-tv) .panel{ overflow:hidden; }
     .cal-week-row .day-cell:last-child{ border-right:none; }
 
     .panel{ flex:1; min-height:0; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; }
@@ -2122,7 +2116,7 @@
       padding:7px 0; text-align:center; font-size:12px; font-weight:700;
       color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em;
     }
-    :host(.mode-tv) .weekdays div{ font-size:20px; color:var(--text-muted); }
+    :host(.mode-tv) .weekdays div{ font-size:13px; color:var(--text-muted); }
     .weekdays div.sun{ color:#ff6b64; }
     .weekdays div.sat{ color:var(--accent); }
 
@@ -2139,6 +2133,7 @@
       flex:none; font-size:14px; font-weight:600; color:var(--text);
       width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:50%;
     }
+    :host(.mode-tv) .day-num{ font-size:11px; width:16px; height:16px; }
     .day-cell.is-today .day-num{ background:var(--accent); color:#fff; }
     .day-cell.sun .day-num, .day-cell.holiday .day-num{ color:#ff6b64; }
     .day-cell.sat .day-num{ color:var(--accent); }
@@ -2146,7 +2141,7 @@
     /* 연휴 라벨은 날짜 칸 안에서 참고 정보일 뿐, 실제 작업 내용(.chip-row2)보다 눈에 덜 띄어야 한다.
        일반 모드는 다른 화면의 보조 텍스트와 같은 11px을 쓰고, 현장(TV) 모드만 다시 키운다. */
     .holiday-label{ flex:none; font-size:11px; font-weight:700; color:#ff6b64; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    :host(.mode-tv) .holiday-label{ font-size:13px; }
+    :host(.mode-tv) .holiday-label{ font-size:10px; }
 
     /* 칸에 다 담기지 않는 날은 잘라내지 않고 세로로 스크롤해서 모든 작업이 다 보이게 한다
        (날짜 숫자를 작게 줄인 것도 같은 이유 — 내용이 더 중요하다). */
@@ -2159,13 +2154,13 @@
       background:var(--surface-2); color:var(--text); border-left:3px solid var(--accent);
       display:flex; flex-direction:row; align-items:flex-start; gap:6px;
     }
-    :host(.mode-tv) .ev-chip{ font-size:22px; background:#000; color:#fff; border-left:none; padding:3px 5px; }
+    :host(.mode-tv) .ev-chip{ font-size:12px; background:#000; color:#fff; border-left:none; padding:2px 4px; gap:4px; }
     .chip-row1{ display:flex; align-items:baseline; flex:none; padding-top:1px; }
     .chip-qty{
       font-weight:700; font-size:11px; color:var(--accent); background:var(--accent-soft);
       padding:1px 6px; border-radius:4px; white-space:nowrap;
     }
-    :host(.mode-tv) .chip-qty{ font-size:20px; color:#0a0a0a; background:var(--accent); }
+    :host(.mode-tv) .chip-qty{ font-size:10.5px; padding:1px 4px; color:#0a0a0a; background:var(--accent); }
     /* 내용을 줄이지 않고 다 보여주는 게 우선이라, 한 줄로 자르지 않고 줄바꿈해서 전부 표시한다.
        칸에 다 안 들어가면 day-events가 세로 스크롤되어 잘리는 일 없이 전부 볼 수 있다. */
     /* 다른 화면에서 라벨·보조 텍스트에 계속 써온 회색(text-muted)으로 —
@@ -2174,7 +2169,7 @@
       flex:1; min-width:0; font-size:13px; font-weight:600; color:var(--text-muted);
       letter-spacing:-.005em; white-space:normal; word-break:break-word;
     }
-    :host(.mode-tv) .chip-row2{ font-size:21px; color:#fff; }
+    :host(.mode-tv) .chip-row2{ font-size:12px; color:#fff; }
     /* 휴일/기타 사내 일정 메모는 붉은 계열의 옅은 색으로 구분한다. */
     .ev-chip.holiday{ background:var(--danger-soft); color:var(--danger); border-left-color:var(--danger); }
     :host(.mode-tv) .ev-chip.holiday{ color:#fff; background:#000; border-left:none; }
@@ -3621,9 +3616,33 @@
       applyMode();
     }
     root.host.__scheduleSetMode = setMode;
-    root.getElementById('scheduleTitle').addEventListener('click', () => setMode('tv'));
+    // 현장(TV) 모드로 들어갈 때는 브라우저 주소창·탭 표시줄까지 가려지도록 전체화면으로 전환하고,
+    // 일반 모드로 돌아올 때는 다시 빠져나온다. 전체화면 API는 반드시 사용자 클릭 같은 실제 조작
+    // 안에서 호출해야만 동작하므로, 모드 전환 버튼의 클릭 핸들러 안에서 바로 호출한다.
+    // (일부 브라우저·미리보기 환경은 전체화면 자체를 막아둘 수 있어, 실패해도 조용히 무시하고
+    // 화면 전환 자체는 그대로 진행한다 — 전체화면은 "되면 좋은" 부가 기능이다.)
+    function requestFullscreenSafe(){
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+      if (!req) return;
+      try { const p = req.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    }
+    function exitFullscreenSafe(){
+      const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+      if (!isFs) return;
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+      if (!exit) return;
+      try { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    }
+    root.getElementById('scheduleTitle').addEventListener('click', () => {
+      setMode('tv');
+      requestFullscreenSafe();
+    });
     root.getElementById('clockArea').addEventListener('click', () => {
-      if (scheduleMode === 'tv') setMode('general');
+      if (scheduleMode === 'tv') {
+        setMode('general');
+        exitFullscreenSafe();
+      }
     });
 
     const WEEKDAYS = ['일','월','화','수','목','금','토'];
@@ -3729,11 +3748,11 @@
 
       const grid = root.getElementById('calGrid');
       grid.innerHTML = '';
-      // 현장(TV) 모드에서는 주(행) 높이를 내용에 맞춰 가변으로 두고(패널이 세로 스크롤),
-      // 좁은 화면(휴대폰)에서도 마찬가지로 내용에 맞춰 늘어나는 레이아웃을 쓴다(아래 모바일
-      // 미디어쿼리). 그 외(일반 모드 + 넓은 화면)에서는 화면 높이에 맞춰 균등 분할한다.
+      // 현장(TV) 모드는 스크롤 없이 화면 전체에 꽉 차야 하므로, 일반 모드(넓은 화면)와
+      // 똑같이 이번 달에 필요한 주 수만큼 세로 공간을 균등 분할하는 고정 그리드를 쓴다.
+      // 좁은 화면(휴대폰)만 내용에 맞춰 늘어나는 레이아웃(아래 모바일 미디어쿼리)을 쓴다.
       const isWideScreen = !window.matchMedia || window.matchMedia('(min-width: 901px)').matches;
-      const isTvVariableHeight = scheduleMode === 'tv';
+      const isTvVariableHeight = false;
       grid.style.gridTemplateRows = (isWideScreen && !isTvVariableHeight) ? `repeat(${weeksNeeded}, 1fr)` : '';
 
       function buildCell(cellDate){
