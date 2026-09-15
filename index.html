@@ -3866,9 +3866,7 @@
       // 스크롤이 아예 없어야 하므로, 넘치는 칸은 --day-scale 값을 낮춰서(위 CSS의 calc()에
       // 반영됨) 그 칸 안 글자·배지·간격을 실제로 줄인다. 시각적으로만 축소하는 transform과
       // 달리 진짜 글자 크기가 줄어드는 것이므로 줄바꿈이 다시 계산돼 가로 폭을 그대로
-      // 꽉 채운다(오른쪽에 빈 공간이 남지 않는다). 한 번에 정확한 값을 계산할 수 없어서
-      // (글자가 작아지면 줄바꿈도 바뀌어 필요한 높이 자체가 달라지므로) 몇 번 다시 재서
-      // 좁혀나간다.
+      // 꽉 채운다(오른쪽에 빈 공간이 남지 않는다).
       const raf = window.requestAnimationFrame || ((fn) => setTimeout(fn, 0));
       raf(() => {
         const isTv = scheduleMode === 'tv';
@@ -3876,18 +3874,22 @@
           const cell = w.closest('.day-cell');
           if (!cell) return;
           if (isTv) {
-            let scale = 1;
             cell.style.setProperty('--day-scale', '1');
-            for (let i = 0; i < 6; i++) {
-              const needed = w.scrollHeight;
-              const avail = w.clientHeight;
-              if (avail <= 0 || needed <= avail + 1) break;
-              // 여유(0.94)를 조금 두어 픽셀 단위로 다시 넘치는 걸 막고,
-              // 너무 심하게 작아지지 않도록 50%까지만 줄인다(그 이상 넘치면 어쩔 수 없이
-              // 살짝 잘리지만, 실제로 이 정도까지 몰리는 경우는 거의 없다).
-              scale = Math.max(0.5, Math.min(scale, scale * (avail / needed) * 0.94));
-              cell.style.setProperty('--day-scale', String(scale));
-              if (scale <= 0.5) break;
+            const fitsAtFull = w.scrollHeight <= w.clientHeight + 1;
+            if (!fitsAtFull) {
+              // 줄이는 비율을 한 번에 계산해서 끝내면(예: 필요/보유 비율에 안전 여유만 곱하는
+              // 식) 여유분만큼 매번 필요 이상으로 줄어들어 칸 아래에 빈 공간이 남는다.
+              // 글자가 작아지면 줄바꿈도 달라져서 필요한 높이 자체가 바뀌므로, 이분 탐색으로
+              // "안 넘치는 한도 내에서 가장 큰 값"을 여러 번 실측하며 정확히 찾는다 —
+              // 그러면 화면을 최대한 꽉 채우면서도 절대 넘치지 않는다.
+              let lo = 0.4, hi = 1, best = 0.4;
+              for (let i = 0; i < 12; i++) {
+                const mid = (lo + hi) / 2;
+                cell.style.setProperty('--day-scale', String(mid));
+                if (w.scrollHeight <= w.clientHeight + 1) { best = mid; lo = mid; }
+                else { hi = mid; }
+              }
+              cell.style.setProperty('--day-scale', String(best));
             }
             cell.classList.remove('has-more');
             return;
