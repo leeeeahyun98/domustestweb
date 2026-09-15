@@ -2018,6 +2018,16 @@
       --status-done:#8a8a8a; --status-done-soft:rgba(138,138,138,.14);
       --shadow:none; --overlay: rgba(0,0,0,.7);
       --tv-red:#ff0000; --tv-metal:#ffab00;
+      /* 현장 모니터 해상도가 제각각이라(예: 1920x1080 vs 3840x2160 4K), 글씨 크기를
+         고정 px로만 두면 화면이 클수록 칸에 비해 글씨가 작아 보인다("칸 안에 안 꽉
+         참"). 화면 너비를 기준으로 한 번 더 곱해주는 배율을 두어, 해상도가 커지면
+         글씨도 그만큼 커지게 한다(1920px 기준 1배). 아래 --day-scale(이번 달 내용
+         양에 따른 미세 조정)과 곱해서 최종 글씨 크기를 정한다. */
+      /* 100vw는 길이(px) 값이라 그냥 숫자 1920으로 나누면 결과도 길이가 되어(단위가
+         안 맞아) clamp()의 나머지 두 인자(단순 배율 숫자)와 타입이 맞지 않아 전체가
+         무효 처리되고 조용히 기본값(16px)으로 돌아가 버렸었다 — 반드시 길이(1920px)로
+         나눠야 순수 배율(숫자)이 나온다. */
+      --tv-res-scale: clamp(0.2, calc(100vw / 1920px), 3);
       background:var(--bg); color:var(--text);
     }
     *{box-sizing:border-box;}
@@ -2057,8 +2067,8 @@
     :host(.mode-tv) .brand{ display:none; }
     :host(.mode-tv) .topbar{ justify-content:space-between; }
     /* 오른쪽 위 시각(26px)과 크기를 맞춘다. */
-    :host(.mode-tv) .tv-date{ display:block; font-size:18px; font-weight:600; color:var(--text); letter-spacing:-.01em; }
-    :host(.mode-tv) .clock .time{ font-size:18px; }
+    :host(.mode-tv) .tv-date{ display:block; font-size:calc(var(--tv-res-scale, 1) * 18px); font-weight:600; color:var(--text); letter-spacing:-.01em; }
+    :host(.mode-tv) .clock .time{ font-size:calc(var(--tv-res-scale, 1) * 18px); }
     :host(.mode-tv) .clock{ cursor:pointer; }
     /* 메뉴 버튼이 42px로 커진 만큼 시각 옆 여백도 같이 넉넉하게 넓힌다(안 겹치게). */
     :host(.mode-tv) .topbar-right{ padding-right:50px; }
@@ -2119,12 +2129,18 @@
       padding:7px 0; text-align:center; font-size:12px; font-weight:700;
       color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em;
     }
-    :host(.mode-tv) .weekdays div{ font-size:14.5px; font-weight:600; color:var(--text-muted); }
+    :host(.mode-tv) .weekdays div{ font-size:calc(var(--tv-res-scale, 1) * 14.5px); font-weight:600; color:var(--text-muted); }
     .weekdays div.sun{ color:#ff6b64; }
     .weekdays div.sat{ color:var(--accent); }
     :host(.mode-tv) .weekdays div.sun{ color:var(--tv-red); }
 
     .cal-grid{ flex:1; min-height:0; display:grid; grid-template-columns:repeat(7,1fr); grid-template-rows:repeat(6,1fr); }
+    /* --day-scale는 JS가 바로 이 요소(#calGrid)에 인라인으로 설정한다. --tv-scale(실제
+       글씨 크기에 쓰는 최종 배율 = 해상도 배율 x 이번 달 내용량 미세조정)도 반드시 같은
+       요소에서 선언해야 그 --day-scale 값을 볼 수 있다 — :host처럼 더 위쪽(조상)에서
+       선언하면 자손에 설정된 --day-scale을 거꾸로 읽어올 수 없어 항상 기본값(1)으로
+       고정돼버린다(실제로 이 버그로 화면 크기와 무관하게 글씨가 하나도 안 줄어든 적 있음). */
+    :host(.mode-tv) .cal-grid{ --tv-scale: calc(var(--day-scale, 1) * var(--tv-res-scale, 1)); }
     .day-cell{
       min-height:0; min-width:0; overflow:hidden; border-right:1px solid var(--border); border-bottom:1px solid var(--border);
       padding:6px 7px; display:flex; flex-direction:column; gap:3px; cursor:pointer; transition:background .12s ease;
@@ -2135,7 +2151,10 @@
     .day-cell.outside:hover{ background:transparent; cursor:default; }
     /* 칸을 최대한 꽉 쓰도록 현장(TV) 모드는 안쪽 여백·줄 간격을 일반 모드보다 좁힌다
        (완전히 붙이지는 않고 숨 쉴 정도만 남긴다). */
-    :host(.mode-tv) .day-cell{ padding:4px 5px; gap:2px; }
+    :host(.mode-tv) .day-cell{
+      padding:calc(var(--tv-res-scale, 1) * 4px) calc(var(--tv-res-scale, 1) * 5px);
+      gap:calc(var(--tv-res-scale, 1) * 2px);
+    }
     /* 오늘 날짜 칸은 그대로 두고 테두리만 빨간색으로 둘러서 구분한다 — 배경·배지 등
        다른 요소는 다른 날짜 칸과 똑같이 유지한다. border 대신 box-shadow(inset)를 써서
        옆칸과의 격자선(border-right/bottom)이나 칸 크기에 영향을 주지 않는다. */
@@ -2145,7 +2164,10 @@
       flex:none; font-size:14px; font-weight:600; color:var(--text);
       width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:50%;
     }
-    :host(.mode-tv) .day-num{ font-size:13px; font-weight:600; width:19px; height:19px; }
+    :host(.mode-tv) .day-num{
+      font-size:calc(var(--tv-res-scale, 1) * 13px); font-weight:600;
+      width:calc(var(--tv-res-scale, 1) * 19px); height:calc(var(--tv-res-scale, 1) * 19px);
+    }
     .day-cell.is-today .day-num{ background:var(--accent); color:#fff; }
     .day-cell.sun .day-num, .day-cell.holiday .day-num{ color:#ff6b64; }
     .day-cell.sat .day-num{ color:var(--accent); }
@@ -2157,7 +2179,7 @@
     /* 연휴 라벨은 날짜 칸 안에서 참고 정보일 뿐, 실제 작업 내용(.chip-row2)보다 눈에 덜 띄어야 한다.
        일반 모드는 다른 화면의 보조 텍스트와 같은 11px을 쓰고, 현장(TV) 모드만 다시 키운다. */
     .holiday-label{ flex:none; font-size:11px; font-weight:700; color:#ff6b64; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    :host(.mode-tv) .holiday-label{ font-size:12px; font-weight:600; color:var(--tv-red); }
+    :host(.mode-tv) .holiday-label{ font-size:calc(var(--tv-scale, 1) * 12px); font-weight:600; color:var(--tv-red); }
 
     /* 칸에 다 담기지 않는 날은 잘라내지 않고 세로로 스크롤해서 모든 작업이 다 보이게 한다
        (날짜 숫자를 작게 줄인 것도 같은 이유 — 내용이 더 중요하다). */
@@ -2169,7 +2191,7 @@
        transform:scale()처럼 통째로 시각적으로만 축소하면 너비도 같이 줄어 오른쪽에 빈
        공간이 남는데, 진짜 글자 크기를 줄이면 줄바꿈이 다시 계산돼 가로 폭을 그대로 꽉
        채운다. */
-    :host(.mode-tv) .day-events{ overflow:hidden; gap:2px; }
+    :host(.mode-tv) .day-events{ overflow:hidden; gap:calc(var(--tv-res-scale, 1) * 2px); }
     /* 일반 모드: 검은 칸이 아니라 앱 다른 곳(태그·필 등)과 같은 은은한 색감을 쓴다 —
        옅은 배경 + 왼쪽 색 띠로 구분하고, 글자 크기도 목록·표 화면과 같은 13px 안팎.
        현장(TV) 모드는 화면과의 거리가 멀어서 아래에서 다시 검은 배경 + 큰 글자로 되돌린다.
@@ -2181,10 +2203,10 @@
       display:flex; flex-direction:row; align-items:flex-start; gap:6px;
     }
     :host(.mode-tv) .ev-chip{
-      font-size:calc(var(--day-scale, 1) * 14px); background:var(--surface-2); color:#fff;
+      font-size:calc(var(--tv-scale, 1) * 14px); background:var(--surface-2); color:#fff;
       border:none;
-      padding:calc(var(--day-scale, 1) * 3px) calc(var(--day-scale, 1) * 5px);
-      gap:calc(var(--day-scale, 1) * 4px);
+      padding:calc(var(--tv-scale, 1) * 3px) calc(var(--tv-scale, 1) * 5px);
+      gap:calc(var(--tv-scale, 1) * 4px);
     }
     .chip-row1{ display:flex; align-items:baseline; flex:none; padding-top:1px; }
     .chip-qty{
@@ -2193,8 +2215,8 @@
     }
     /* 작업량 배지는 본문 글씨보다 확실히 작게 — 시선이 작업 내용(점포·담당자)에 먼저 가게 한다. */
     :host(.mode-tv) .chip-qty{
-      font-size:calc(var(--day-scale, 1) * 9px); font-weight:700;
-      padding:calc(var(--day-scale, 1) * 1px) calc(var(--day-scale, 1) * 3px);
+      font-size:calc(var(--tv-scale, 1) * 9px); font-weight:700;
+      padding:calc(var(--tv-scale, 1) * 1px) calc(var(--tv-scale, 1) * 3px);
       color:#0a0a0a; background:var(--accent);
     }
     /* 내용을 줄이지 않고 다 보여주는 게 우선이라, 한 줄로 자르지 않고 줄바꿈해서 전부 표시한다.
@@ -2205,7 +2227,7 @@
       flex:1; min-width:0; font-size:calc(var(--day-scale, 1) * 13px); font-weight:600; color:var(--text-muted);
       letter-spacing:-.005em; white-space:normal; word-break:break-word;
     }
-    :host(.mode-tv) .chip-row2{ font-size:calc(var(--day-scale, 1) * 14px); font-weight:400; color:#fff; }
+    :host(.mode-tv) .chip-row2{ font-size:calc(var(--tv-scale, 1) * 14px); font-weight:400; color:#fff; }
     /* 휴일/기타 사내 일정 메모는 붉은 계열의 옅은 색으로 구분한다. */
     .ev-chip.holiday{ background:var(--danger-soft); color:var(--danger); border-left-color:var(--danger); }
     :host(.mode-tv) .ev-chip.holiday{ color:var(--tv-red); background:var(--surface-2); border-left:none; }
@@ -3918,11 +3940,25 @@
         }
         if (isMobile) {
           allFit(1);
+        } else if (isTv) {
+          // 실제 현장 모니터 해상도가 1920x1080부터 3840x2160(4K)까지 제각각이라, CSS의
+          // --tv-res-scale(화면 너비 기준 배율, 위 :host(.mode-tv) 참고)이 해상도 차이는
+          // 이미 흡수해준다. 여기 --day-scale은 그 위에서 "이번 달 일정이 며칠에
+          // 몰렸는지"에 따른 미세 조정만 담당한다 — 해상도를 또 곱하는 게 아니라서
+          // 예전(0.15~1)보다 살짝 넓은 정도(0.3~1.8)면 충분하다.
+          let lo = 0.1, hi = 1.8, best = 0.1;
+          for (let i = 0; i < 18; i++) {
+            const mid = (lo + hi) / 2;
+            if (allFit(mid)) { best = mid; lo = mid; } else { hi = mid; }
+          }
+          allFit(best);
         } else if (!allFit(1)) {
-          // 해상도가 아주 낮은 화면(현장 스틱PC 등)에서는 칸 자체가 작아서, 예전 최소
-          // 배율(0.4)로도 다 안 들어가는 경우가 실제로 있었다("절대 잘리면 안 된다"는
-          // 요구 위반). 글씨가 다소 작아지더라도 잘리는 것보단 나으므로, 최소 배율을
-          // 훨씬 낮춰서(0.15) 웬만한 해상도·일정 개수에서도 끝까지 줄여서 다 담는다.
+          // 해상도가 아주 낮은 화면(노트북 창을 좁힌 경우 등)에서는 칸 자체가 작아서,
+          // 예전 최소 배율(0.4)로도 다 안 들어가는 경우가 실제로 있었다("절대 잘리면
+          // 안 된다"는 요구 위반). 글씨가 다소 작아지더라도 잘리는 것보단 나으므로,
+          // 최소 배율을 훨씬 낮춰서(0.15) 웬만한 해상도·일정 개수에서도 다 담는다.
+          // (일반 모니터 모드는 TV와 달리 1보다 키우지는 않는다 — 관리자 화면 글씨가
+          // 다른 UI보다 과하게 커지는 걸 막기 위함.)
           let lo = 0.15, hi = 1, best = 0.15;
           for (let i = 0; i < 16; i++) {
             const mid = (lo + hi) / 2;
