@@ -450,9 +450,6 @@
             <div class="filter-group"><label>발주처</label><select class="filter-select" id="filterClient"></select></div>
             <div class="filter-group"><label>담당자</label><select class="filter-select" id="filterRep"></select></div>
             <button class="unpaid-toggle" id="unpaidOnlyBtn" type="button">미수금만 보기</button>
-            <div class="toolbar-right">
-              <button class="export-btn" id="salesExportBtn" type="button">엑셀로 내보내기</button>
-            </div>
           </div>
         </div>
 
@@ -484,7 +481,10 @@
           <tbody id="orderRows"></tbody>
         </table>
         </div>
-        <div class="foot" id="salesTableFoot"></div>
+        <div class="foot-row">
+          <div class="foot" id="salesTableFoot"></div>
+          <button class="export-btn" id="salesExportBtn" type="button">엑셀로 내보내기</button>
+        </div>
       </div>
     </div>
   </div>
@@ -793,14 +793,6 @@
             <div class="filter-group"><label>발주처</label><select class="filter-select" id="clientFilter"></select></div>
             <div class="filter-group"><label>담당자</label><select class="filter-select" id="repFilter"></select></div>
             <button class="unpaid-toggle" id="unpaidOnlyBtn" type="button">미수금만 보기</button>
-            <div class="upload-wrap">
-              <label class="upload-btn">
-                엑셀/CSV 업로드
-                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
-              </label>
-              <span class="upload-status" id="uploadStatus"></span>
-              <button class="export-btn" id="revenueExportBtn" style="margin-left:8px">엑셀로 내보내기</button>
-            </div>
           </div>
         </div>
         <div class="table-scroll">
@@ -815,7 +807,17 @@
           <tbody id="tbody"></tbody>
         </table>
         </div>
-        <div class="foot" id="tableFoot"></div>
+        <div class="foot-row">
+          <div class="foot" id="tableFoot"></div>
+          <div class="upload-wrap">
+            <label class="upload-btn">
+              엑셀/CSV 업로드
+              <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+            </label>
+            <span class="upload-status" id="uploadStatus"></span>
+            <button class="export-btn" id="revenueExportBtn" style="margin-left:8px">엑셀로 내보내기</button>
+          </div>
+        </div>
       </div>
 
       <div class="panel" id="targetPanel" style="margin-top:18px;">
@@ -1271,6 +1273,17 @@
 
   // 수주 등록 화면에서 등록한 "납품 일정" 항목들 — 일정표·오늘 할 일 화면이 여기서 실시간으로 읽어간다.
   const ORDER_TASKS = [];
+
+  // 일정표에서 등록하는 휴일/기타 사내 일정 — 페이지 스코프에 두면 다른 화면에서 저장할 때
+  // refresh()가 불리면서 매번 초기 샘플로 리셋돼, 등록한 휴일이 얼마 못 가 사라져 보였다.
+  // REVENUE_TARGETS와 같은 이유로 모듈 스코프로 올려서 세션 동안 유지되게 한다.
+  let CUSTOM_EVENTS = [
+    { id:'h1', date:'2026-09-24', label:'추석연휴', isHoliday:true },
+    { id:'h2', date:'2026-09-25', label:'추석연휴', isHoliday:true },
+    { id:'h3', date:'2026-09-26', label:'추석연휴', isHoliday:true },
+    { id:'h4', date:'2026-10-03', label:'개천절', isHoliday:true },
+    { id:'h5', date:'2026-10-09', label:'한글날', isHoliday:true },
+  ];
 
   // 매출 목표 관리에서 등록한 목표치 — 페이지 스코프에 두면 다른 화면 저장 시 refresh()가 불릴 때마다 초기화되므로
   // 모듈 스코프로 올려서 세션 동안 유지되게 한다.
@@ -2072,12 +2085,13 @@
     /* 모바일에서는 사이드바가 접히고 대신 우측 상단에 햄버거 메뉴 버튼이 뜨는데,
        일반 모드는 그 자리를 비워두지 않아서 시각(초 단위)이 버튼에 가려 잘렸다 — TV 모드처럼 자리를 비워준다. */
     @media (max-width:760px){ .topbar-right{ padding-right:50px; } }
+    /* 파란색(강조색) 버튼이 너무 눈에 띄어서, 자주 안 쓰는 이 버튼은 무채색(회색)으로 톤을 낮췄다. */
     .add-holiday-btn{
-      background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent);
+      background:var(--surface-2); border:1px solid var(--border); color:var(--text);
       height:30px; padding:0 14px; border-radius:9px; cursor:pointer; font-size:12.5px;
-      font-weight:700; white-space:nowrap; transition:filter .12s ease;
+      font-weight:700; white-space:nowrap; transition:filter .12s ease, background .12s ease;
     }
-    .add-holiday-btn:hover{ filter:brightness(1.08); }
+    .add-holiday-btn:hover{ background:var(--surface-3); }
     .clock{ text-align:right; }
     /* 일반 모드에서는 오른쪽 위에 시각만 보이면 되므로 날짜 줄은 기본적으로 숨긴다
        (현장 모드에서는 아래에서 별도의 tv-date로 왼쪽에 띄운다). */
@@ -2182,6 +2196,9 @@
     }
     .day-cell:hover{ background:var(--surface-2); }
     .cal-grid .day-cell:nth-child(7n){ border-right:none; }
+    /* 오늘 칸 — 숫자에 파란 동그라미를 채우던 것 대신, 칸 전체를 두꺼운 검정 테두리로
+       감싼다. box-shadow(inset)를 쓰면 칸 크기·옆 칸과의 격자선에 영향을 주지 않는다. */
+    .day-cell.is-today{ box-shadow:inset 0 0 0 2px var(--text); }
     /* 지난달/다음달 날짜 칸은 내용(날짜 숫자·일정)만 흐리게 하고, 칸 테두리(격자선)는
        옅어지지 않게 그대로 화이트로 둔다 — 예전엔 칸 전체(opacity)를 흐리게 해서
        테두리까지 회색으로 보였었다. */
@@ -2216,10 +2233,10 @@
          작업량 박스와 왼쪽 시작점이 같도록 margin-left 값을 그대로 맞춘다. */
       margin:calc(var(--tv-res-scale, 1) * 3px) 0 0 calc(var(--tv-res-scale, 1) * 2px);
     }
-    .day-cell.is-today .day-num{ background:var(--accent); color:#fff; }
+    /* 오늘은 숫자에 파란 동그라미를 채우는 대신, 칸 전체를 두꺼운 검정 테두리로 감싸서
+       표시한다(테두리는 칸 크기·격자선에 영향 없게 box-shadow(inset)로 그린다 — 아래 참고). */
     .day-cell.sun .day-num, .day-cell.holiday .day-num{ color:#ff6b64; }
     .day-cell.sat .day-num{ color:var(--accent); }
-    .day-cell.is-today.sun .day-num, .day-cell.is-today.sat .day-num, .day-cell.is-today.holiday .day-num{ color:#fff; }
     :host(.mode-tv) .day-cell.sun .day-num, :host(.mode-tv) .day-cell.holiday .day-num{ color:var(--tv-red); }
     /* 오늘 날짜는 동그란 배지 없이, 칸 배경도 검정 그대로라 다른 날짜와 같은 흰색 글씨를 쓴다. */
     :host(.mode-tv) .day-cell.is-today .day-num{ background:none; color:var(--text); }
@@ -2307,7 +2324,8 @@
       background:var(--bg);
       box-shadow:inset 0 0 0 calc(var(--tv-res-scale, 1) * 4px) #ffffff;
     }
-    .ev-chip.is-done{ opacity:.55; }
+    /* 완료 처리된 항목을 흐리게(투명도 낮춰) 구분하던 기능은 없앴다 — 완료 여부와 상관없이
+       항상 똑같이 진하게 보인다. */
     .ev-more{ font-size:19px; font-weight:600; color:var(--text); padding-left:2px; }
     /* 칸 안에 다 담기지 않아 스크롤이 필요한 날은, 아래쪽에 옅은 그라데이션과 화살표로
        "더 있다"는 걸 알려준다(잘려서 안 보이는 걸 모르고 지나치지 않도록). */
@@ -2331,11 +2349,21 @@
     .ev-edit-field input, .ev-edit-field select{
       padding:7px 9px; border-radius:8px; border:1px solid var(--border);
       background:var(--surface); color:var(--text); font-size:12.5px; font-family:inherit;
+      width:100%; box-sizing:border-box;
     }
     .ev-edit-field input[type="date"]{ cursor:pointer; }
     .ev-edit-field input[type="date"]::-webkit-calendar-picker-indicator{ filter:invert(1); cursor:pointer; }
     .ev-edit-field .kdate-wrap{ display:block; width:100%; }
     .ev-edit-field .kdate-wrap input[type="date"]{ width:100%; box-sizing:border-box; }
+    /* 시각/타입/작업량/담당자 select — 브라우저 기본 렌더링에 맡기면 모바일에서 칸 폭이
+       날짜 칸과 다르게(더 넓게) 나오는 경우가 있어, 네이티브 렌더링을 리셋하고
+       화살표를 직접 그려서 다른 칸들과 폭·정렬을 맞춘다. */
+    .ev-edit-field select{
+      -webkit-appearance:none; appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 8px center; background-size:12px;
+      padding-right:26px;
+    }
     .ev-btn.danger{ border-color:#e5484d; color:#e5484d; }
     .ev-btn-row{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
     .ev-btn{
@@ -2381,17 +2409,17 @@
       background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--text);
       border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:5px;
     }
-    /* 일반은 검정 띠, 금속은 연한 회색 띠로 — 두께는 똑같이 두고 색만으로 구분한다.
-       카드 배경에도 옅은 회색 톤을 깔아서 한눈에 바로 구분되게 한다(휴일 카드가
-       옅은 빨강 배경을 쓰는 것과 같은 방식). */
-    .ev-card.metal{ background:rgba(75,85,99,.22); border-left-color:#9ca3af; }
+    /* 일반은 검정 띠, 금속은 연한 회색 띠로 — 색만으로 구분한다. 예전엔 카드 배경에도
+       옅은 회색 톤을 깔았는데, 일반 카드와 배경이 달라 보여 통일해달라는 요청으로
+       배경은 일반과 똑같이 두고 왼쪽 띠 색만으로 구분한다. */
+    .ev-card.metal{ border-left-color:#9ca3af; }
     :host(.mode-tv) .ev-card.metal{ background:none; border-left-color:var(--tv-metal); }
     .ev-card.holiday{ background:var(--danger-soft); border-left-color:var(--danger); }
     /* --danger/--danger-soft는 라이트 값 그대로라 어두운 현장 모드 배경 위에서는 잘 안 보인다 —
        현장 모드에서는 원래처럼 검정 배경에 밝은 빨강 글씨로 고정한다. */
     :host(.mode-tv) .ev-card.holiday{ background:#000; border-left-color:var(--tv-red); }
     :host(.mode-tv) .ev-card.holiday .type-tag{ color:var(--tv-red); }
-    .ev-card.is-done{ opacity:.6; }
+    /* 완료 처리된 항목을 흐리게 표시하던 기능은 없앴다. */
     .ev-card .client{ font-size:15px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; min-width:0; overflow-wrap:break-word; }
     .ev-card .client.metal{ color:var(--metal-color); }
     :host(.mode-tv) .ev-card .client.metal{ color:var(--tv-metal); }
@@ -2420,7 +2448,7 @@
     /* 커스텀 한국어 날짜 표기 오버레이 — 달력 아이콘/클릭은 그대로, 입력칸 텍스트만 투명 처리하고
        위에 "YYYY.MM.DD" 형식 텍스트를 덧씌운다. */
     .kdate-wrap{ position:relative; display:inline-block; vertical-align:middle; }
-    .kdate-wrap input[type="date"]{ color:transparent; }
+    .kdate-wrap input[type="date"]{ color:transparent; -webkit-appearance:none; appearance:none; }
     .kdate-overlay{
       position:absolute; inset:0; display:flex; align-items:center;
       pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -2434,7 +2462,9 @@
       background:var(--surface); color:var(--text-muted); font-size:12.5px; font-weight:600; cursor:pointer;
       transition:background .12s ease, border-color .12s ease, color .12s ease;
     }
-    .add-form .chip.active{ background:rgba(229,72,77,.12); border-color:#e5484d; color:#e5484d; }
+    /* "휴일"만 빨간색으로 선택 표시하고, "기타 사내 일정"은 휴일이 아니므로 회색으로 구분한다. */
+    .add-form .chip.active[data-v="holiday"]{ background:rgba(229,72,77,.12); border-color:#e5484d; color:#e5484d; }
+    .add-form .chip.active[data-v="note"]{ background:rgba(75,85,99,.12); border-color:#6b7280; color:#4b5563; }
     .add-form .btn-row{ display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
     .add-form .btn{
       padding:9px 16px; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
@@ -2471,12 +2501,13 @@
         gap:1px; padding:1px 3px 1px 4px; border-radius:3px;
       }
       :host(:not(.mode-tv)) .chip-row1{ flex:none; padding-top:0; }
-      /* 뱃지를 배경 있는 박스로 두면 그 자체가 자리를 많이 차지해서, 정작 중요한
-         점포명이 보일 폭이 확 줄어든다. 모바일 미리보기에서는 박스를 없애고
-         숫자만 짧게 붙이되, 색은 데스크탑과 똑같이 일반=검정/금속=회색으로 구분한다. */
-      :host(:not(.mode-tv)) .chip-qty{ font-size:8px; padding:0; background:none; color:var(--text); font-weight:700; }
-      :host(:not(.mode-tv)) .ev-chip.metal .chip-qty{ background:none; color:var(--metal-color); }
-      :host(:not(.mode-tv)) .chip-qty::after{ content:'·'; margin-left:2px; color:var(--text-faint); font-weight:400; }
+      /* 박스 없이 색으로만 구분하니 모바일에서는 배지 자체가 안 보인다는 피드백을 반영해,
+         작게라도 배경 있는 배지 모양을 유지한다(데스크탑과 같은 검정/회색 배지, 크기만 축소). */
+      :host(:not(.mode-tv)) .chip-qty{
+        font-size:8px; font-weight:700; padding:1px 3px; border-radius:3px;
+        background:#000; color:#fff;
+      }
+      :host(:not(.mode-tv)) .ev-chip.metal .chip-qty{ background:rgba(75,85,99,.14); color:var(--metal-color); }
       :host(:not(.mode-tv)) .chip-row2{
         flex:1; width:auto; min-width:0; font-size:9px; line-height:1.35;
         white-space:nowrap; word-break:normal; overflow-wrap:normal; overflow:hidden; text-overflow:ellipsis;
@@ -2531,6 +2562,17 @@
       box-sizing:border-box; padding:7px 11px; border-radius:8px; border:1px solid var(--border);
       background:var(--surface); color:var(--text); font-size:12.5px; font-family:inherit; text-overflow:ellipsis;
       width:140px; max-width:140px;
+    }
+    /* 브랜드/발주처/담당자 select와 담당자 변경 select(.edit-rep)도 날짜칸과 같은 이유로
+       모바일에서 지정한 폭보다 넓게 렌더링될 수 있어, 터치 화면에서만 네이티브 렌더링을
+       리셋한다 — 화살표 아이콘이 사라지므로 배경 이미지로 화살표를 직접 그려준다. */
+    @media (pointer: coarse){
+      .filter-select, .edit-rep{
+        -webkit-appearance:none; appearance:none;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right 9px center; background-size:13px;
+        padding-right:28px;
+      }
     }
     .search-box{ position:relative; width:100%; }
     .search-box input{
@@ -2621,7 +2663,7 @@
     /* 커스텀 한국어 날짜 표기 오버레이 — 달력 아이콘/클릭은 그대로, 입력칸 텍스트만 투명 처리하고
        위에 "YYYY.MM.DD" 형식 텍스트를 덧씌운다. */
     .kdate-wrap{ position:relative; display:inline-block; vertical-align:middle; }
-    .kdate-wrap input[type="date"]{ color:transparent; }
+    .kdate-wrap input[type="date"]{ color:transparent; -webkit-appearance:none; appearance:none; }
     .kdate-overlay{
       position:absolute; inset:0; display:flex; align-items:center;
       pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -2638,13 +2680,16 @@
     .row-btn:hover{ background:var(--surface-3); }
     .row-btn.save-row{ background:var(--accent); border-color:var(--accent); color:#fff; margin-right:4px; }
     .row-btn.save-row:hover{ filter:brightness(1.05); }
-    .row-btn.cancel-row{ margin-left:0; }
+    .row-btn.cancel-row{ margin-left:0; margin-right:2px; }
     .row-btn.edit-row{ background:none; border-color:transparent; color:var(--accent); }
     .row-btn.edit-row:hover{ background:var(--accent-soft); }
+    /* 삭제 버튼 — 예전엔 진한 빨강으로 꽉 채워서 눈에 너무 튀었다. 저장/취소 사이에
+       위치가 바뀌면서(실수로 누를 위험이 줄어) 굳이 꽉 찬 빨강일 필요가 없어, 옅은 빨강
+       텍스트/테두리만 있는 형태로 톤을 낮췄다 — 위험한 동작이라는 건 여전히 색으로 구분된다. */
     .row-btn.delete-row{
-      padding:6px 8px; margin-right:2px; background:var(--danger); border-color:var(--danger); color:#fff;
+      padding:6px 8px; margin-right:2px; background:none; border-color:var(--border); color:var(--danger);
     }
-    .row-btn.delete-row:hover{ filter:brightness(1.05); }
+    .row-btn.delete-row:hover{ background:var(--danger-soft); border-color:var(--danger); }
     .row-btn.delete-ok{ background:var(--danger); border-color:var(--danger); color:#fff; }
     .row-btn.delete-ok:hover{ filter:brightness(1.05); }
     td.delete-confirm-text{ font-size:12.5px; color:var(--danger); font-weight:600; white-space:normal; }
@@ -2727,8 +2772,11 @@
       border-radius:10px; background:var(--surface-2);
     }
     .pay-item-date{ font-size:11.5px; color:var(--text-faint); font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; width:64px; flex:none; }
-    .pay-item-memo{ font-size:12.5px; color:var(--text-muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .pay-item-amount{ font-size:13px; font-weight:700; font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; }
+    .pay-item-memo{ font-size:12.5px; color:var(--text-muted); flex:none; width:44px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* 금액이 오른쪽 끝(수정/삭제 버튼 옆)에 붙어 있어서 오른쪽 정렬처럼 보였다 —
+       구분(계약금 등) 칸 폭을 고정해 그 옆에 바로 붙게 하고, 남은 공간을 이 칸이
+       차지하며 왼쪽부터 표시되게 한다. */
+    .pay-item-amount{ font-size:13px; font-weight:700; font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; flex:1; text-align:left; }
     .pay-item-actions{ display:flex; gap:4px; flex:none; }
     .pay-item-actions button{
       width:22px; height:22px; border-radius:6px; border:1px solid var(--border); background:var(--surface);
@@ -2736,6 +2784,12 @@
     }
     .pay-item-actions button:hover{ color:var(--text); background:var(--surface-3); }
     .pay-item-actions .del:hover{ color:var(--danger); border-color:var(--danger); }
+    /* 모바일(터치)에서는 22px 버튼이 손가락으로 정확히 누르기엔 너무 작아 옆 버튼을 잘못 누르거나
+       탭이 씹히는 경우가 많다 — 터치 화면에서만 탭 영역을 넉넉하게 키운다. */
+    @media (pointer: coarse){
+      .pay-item-actions{ gap:6px; }
+      .pay-item-actions button{ width:34px; height:34px; font-size:14px; }
+    }
     /* 인라인 수정 행 — window.prompt() 팝업이 막힌 환경(아티팩트 미리보기 등)에서도 항상 동작하도록
        그 항목 자리를 바로 입력 폼으로 바꾼다. 너비에 상관없이 항상 줄바꿈 가능하게 만들어 어떤 화면에서도 깨지지 않게 한다. */
     /* 수정 행도 추가 폼과 똑같은 3칸 그리드를 써서 폭이 항상 나란히 맞고(예전엔 flex-wrap이라
@@ -2779,7 +2833,13 @@
     .pay-add-btn:disabled{ opacity:.5; cursor:default; }
     .pay-modal-note{ font-size:11px; color:var(--text-faint); text-align:center; }
 
-    .foot{ padding:10px 18px; font-size:11.5px; color:var(--text-faint); border-top:1px solid var(--border); }
+    .foot{ padding:0; font-size:11.5px; color:var(--text-faint); }
+    /* 엑셀 내보내기/업로드 버튼을 표 상단 툴바에서 표 하단(내역 개수 옆)으로 옮겨서,
+       자주 안 쓰는 기능 때문에 상단이 복잡해지지 않게 한다. 좁은 화면에서는 줄바꿈. */
+    .foot-row{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      padding:10px 18px; border-top:1px solid var(--border);
+    }
 
     tr.group-head td{
       background:var(--surface-2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
@@ -2831,7 +2891,6 @@
     .delta.down{ color:var(--danger); }
     .delta.flat{ color:var(--text-faint); font-weight:600; }
     .delta.new{ color:var(--accent); }
-    .toolbar-right{ display:flex; gap:8px; margin-left:auto; align-items:flex-end; }
 
     .analysis-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:22px; padding:18px; }
     .analysis-grid.single{ grid-template-columns:1fr; }
@@ -2990,6 +3049,16 @@
     .field .hint{ font-size:11px; color:var(--text-faint); }
     .field .hint.new{ color:var(--accent); font-weight:600; }
     .field .kdate-wrap{ display:block; width:100%; }
+    /* 담당자 등록/시각/작업량 select — 브라우저 기본 화살표는 같은 폼의 날짜 칸 달력
+       아이콘보다 오른쪽 끝에 훨씬 더 붙어있어서 두 아이콘 위치가 어긋나 보였다(PC도 동일).
+       네이티브 렌더링을 리셋하고 화살표를 직접 그려서 달력 아이콘과 같은 위치에 맞춘다.
+       (모바일에서 select 자체가 지정 폭보다 넓게 렌더링되는 문제도 같이 해결됨) */
+    .field select{
+      -webkit-appearance:none; appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 14px center; background-size:14px;
+      padding-right:34px;
+    }
 
     /* 브랜드/발주처 — 목록에서 골라 쓰거나, 없으면 그 자리에서 코드까지 정해 새로 등록하는 콤보박스. */
     .combo-field{ position:relative; }
@@ -3051,7 +3120,7 @@
     /* 커스텀 한국어 날짜 표기 오버레이 — 달력 아이콘/클릭은 그대로, 입력칸 텍스트만 투명 처리하고
        위에 "YYYY.MM.DD" 형식 텍스트를 덧씌운다. */
     .kdate-wrap{ position:relative; display:inline-block; vertical-align:middle; }
-    .kdate-wrap input[type="date"]{ color:transparent; }
+    .kdate-wrap input[type="date"]{ color:transparent; -webkit-appearance:none; appearance:none; }
     .kdate-overlay{
       position:absolute; inset:0; display:flex; align-items:center;
       pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -3087,11 +3156,9 @@
       border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:10px;
       background:var(--surface-2); position:relative;
     }
-    .task-row .task-item-head{ display:flex; align-items:center; justify-content:space-between; }
-    .task-row .task-num{
-      display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px;
-      background:var(--accent-soft); color:var(--accent); font-size:11.5px; font-weight:700; flex:none;
-    }
+    /* 여러 개일 때 헷갈릴까 봐 번호를 매겼었는데, 어차피 위에서부터 순서대로라 굳이
+       필요 없다는 의견이 있어 없앴다 — 삭제 버튼만 오른쪽에 남긴다. */
+    .task-row .task-item-head{ display:flex; align-items:center; justify-content:flex-end; }
     /* 날짜 칸(달력 아이콘 포함)과 시각 칸(select)을 한 줄에 나란히 두면 서로 겹쳐 보이고
        높이도 미묘하게 달라 보였다. 뷰포트 미디어쿼리가 실제 환경에서 기대대로 안 먹는
        경우가 있어, 뷰포트에 의존하지 않고 항상 세로로 쌓아서 화면 폭을 온전히 쓰게 한다. */
@@ -3356,8 +3423,11 @@
       border-radius:10px; background:var(--surface-2);
     }
     .pay-item-date{ font-size:11.5px; color:var(--text-faint); font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; width:64px; flex:none; }
-    .pay-item-memo{ font-size:12.5px; color:var(--text-muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .pay-item-amount{ font-size:13px; font-weight:700; font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; }
+    .pay-item-memo{ font-size:12.5px; color:var(--text-muted); flex:none; width:44px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* 금액이 오른쪽 끝(수정/삭제 버튼 옆)에 붙어 있어서 오른쪽 정렬처럼 보였다 —
+       구분(계약금 등) 칸 폭을 고정해 그 옆에 바로 붙게 하고, 남은 공간을 이 칸이
+       차지하며 왼쪽부터 표시되게 한다. */
+    .pay-item-amount{ font-size:13px; font-weight:700; font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; flex:1; text-align:left; }
     .pay-item-actions{ display:flex; gap:4px; flex:none; }
     .pay-item-actions button{
       width:22px; height:22px; border-radius:6px; border:1px solid var(--border); background:var(--surface);
@@ -3365,6 +3435,12 @@
     }
     .pay-item-actions button:hover{ color:var(--text); background:var(--surface-3); }
     .pay-item-actions .del:hover{ color:var(--danger); border-color:var(--danger); }
+    /* 모바일(터치)에서는 22px 버튼이 손가락으로 정확히 누르기엔 너무 작아 옆 버튼을 잘못 누르거나
+       탭이 씹히는 경우가 많다 — 터치 화면에서만 탭 영역을 넉넉하게 키운다. */
+    @media (pointer: coarse){
+      .pay-item-actions{ gap:6px; }
+      .pay-item-actions button{ width:34px; height:34px; font-size:14px; }
+    }
     /* 인라인 수정 행 — window.prompt() 팝업이 막힌 환경(아티팩트 미리보기 등)에서도 항상 동작하도록
        그 항목 자리를 바로 입력 폼으로 바꾼다. 너비에 상관없이 항상 줄바꿈 가능하게 만들어 어떤 화면에서도 깨지지 않게 한다. */
     /* 수정 행도 추가 폼과 똑같은 3칸 그리드를 써서 폭이 항상 나란히 맞고(예전엔 flex-wrap이라
@@ -3403,7 +3479,13 @@
 
 
 
-    .foot{ padding:10px 18px; font-size:11.5px; color:var(--text-faint); border-top:1px solid var(--border); }
+    .foot{ padding:0; font-size:11.5px; color:var(--text-faint); }
+    /* 엑셀 내보내기/업로드 버튼을 표 상단 툴바에서 표 하단(내역 개수 옆)으로 옮겨서,
+       자주 안 쓰는 기능 때문에 상단이 복잡해지지 않게 한다. 좁은 화면에서는 줄바꿈. */
+    .foot-row{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      padding:10px 18px; border-top:1px solid var(--border);
+    }
     .footnote{ font-size:11.5px; color:var(--text-faint); text-align:center; }
 
     tr.group-head td{
@@ -3573,6 +3655,17 @@
     .filter-select{
       padding:7px 11px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text);
       font-size:12.5px; font-family:inherit; width:140px; max-width:140px; text-overflow:ellipsis;
+    }
+    /* 브랜드/발주처/담당자 select도 날짜칸과 같은 이유로 모바일에서 지정한 폭보다 넓게
+       렌더링될 수 있어, 터치 화면에서만 네이티브 렌더링을 리셋한다 — 화살표 아이콘이
+       사라지므로 배경 이미지로 화살표를 직접 그려준다. */
+    @media (pointer: coarse){
+      .filter-select{
+        -webkit-appearance:none; appearance:none;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right 9px center; background-size:13px;
+        padding-right:28px;
+      }
     }
   `;
 
@@ -3926,14 +4019,9 @@
 
     function statusText(ev){ return ev.done ? '완료' : '예정'; }
 
-    let customEvents = [
-      { id:'h1', date:'2026-09-24', label:'추석연휴', isHoliday:true },
-      { id:'h2', date:'2026-09-25', label:'추석연휴', isHoliday:true },
-      { id:'h3', date:'2026-09-26', label:'추석연휴', isHoliday:true },
-      { id:'h4', date:'2026-10-03', label:'개천절', isHoliday:true },
-      { id:'h5', date:'2026-10-09', label:'한글날', isHoliday:true },
-    ];
-    function customEventsByDate(key){ return customEvents.filter(c => c.date === key); }
+    // 실제 데이터는 모듈 스코프의 CUSTOM_EVENTS에 있다 — 다른 화면 저장으로 이 페이지가
+    // refresh()될 때도 등록한 휴일/기타 일정이 사라지지 않도록 하기 위함.
+    function customEventsByDate(key){ return CUSTOM_EVENTS.filter(c => c.date === key); }
 
     let viewYear = today.getFullYear();
     let viewMonth = today.getMonth();
@@ -4014,7 +4102,7 @@
           // 칸에 다 안 들어가면 day-events가 세로로 스크롤된다.
           dayEvents.forEach(ev => {
             const chip = document.createElement('div');
-            chip.className = `ev-chip${ev.done ? ' is-done' : ''}${ev.material === '금속' ? ' metal' : ''}`;
+            chip.className = `ev-chip${ev.material === '금속' ? ' metal' : ''}`;
             chip.innerHTML = `
               <div class="chip-row1">
                 <span class="chip-qty">${formatQty(ev.qty)}</span>
@@ -4147,7 +4235,7 @@
             </div>
           `;
           card.querySelector('.del-btn').addEventListener('click', () => {
-            customEvents = customEvents.filter(x => x.id !== c.id);
+            CUSTOM_EVENTS = CUSTOM_EVENTS.filter(x => x.id !== c.id);
             renderCalendar();
             openDay(date, dayEvents, customEventsByDate(ymd(date)));
           });
@@ -4155,7 +4243,7 @@
         });
         dayEvents.forEach(ev => {
           const card = document.createElement('div');
-          card.className = `ev-card${ev.done ? ' is-done' : ''}${ev.material === '금속' ? ' metal' : ''}`;
+          card.className = `ev-card${ev.material === '금속' ? ' metal' : ''}`;
 
           if (editingEventId === ev.id) {
             card.innerHTML = `
@@ -4336,7 +4424,7 @@
       const date = root.getElementById('addDate').value;
       const label = root.getElementById('addLabel').value.trim();
       if (!date || !label) { showToast('날짜와 내용을 모두 입력해주세요.', 'error'); return; }
-      customEvents.push({ id:'c' + Date.now(), date, label, isHoliday: addType === 'holiday' });
+      CUSTOM_EVENTS.push({ id:'c' + Date.now(), date, label, isHoliday: addType === 'holiday' });
       closeAddModal();
       renderCalendar();
     });
@@ -4546,8 +4634,8 @@
             <td class="center">${renderPaymentCell(o)}</td>
             <td class="col-manage">
               <button type="button" class="row-btn save-row" data-id="${o.id}">저장</button>
-              <button type="button" class="row-btn delete-row" data-id="${o.id}">삭제</button>
               <button type="button" class="row-btn cancel-row" data-id="${o.id}">취소</button>
+              <button type="button" class="row-btn delete-row" data-id="${o.id}">삭제</button>
             </td>
           </tr>
         `;
@@ -5705,7 +5793,6 @@
       row.className = 'task-row';
       row.innerHTML = `
         <div class="task-item-head">
-          <span class="task-num">${taskCount}</span>
           <button class="remove-task" style="display:${taskCount > 1 ? 'inline' : 'none'}">삭제</button>
         </div>
         <div class="task-grid">
