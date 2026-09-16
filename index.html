@@ -321,22 +321,21 @@
       </div>
     </div>
 
-    <div class="section-tabs" id="sectionTabs">
-      <button class="section-tab active" data-sec="list">영업 내역</button>
-      <button class="section-tab" data-sec="analysis">영업 분석</button>
+    <div class="section-tabs-row">
+      <div class="section-tabs" id="sectionTabs">
+        <button class="section-tab active" data-sec="list">영업 내역</button>
+        <button class="section-tab" data-sec="analysis">영업 분석</button>
+      </div>
+      <div class="tabs" id="analysisPeriodTabs" hidden>
+        <button class="tab active" data-p="month">월별</button>
+        <button class="tab" data-p="quarter">분기별</button>
+        <button class="tab" data-p="year">연도별</button>
+      </div>
     </div>
 
     <div class="section-panel" data-sec="analysis" hidden>
-      <div class="panel" id="salesAnalysisPanel">
-        <div class="panel-head">
-          <h2>영업 분석 <span class="admin-tag">관리자 전용</span></h2>
-          <div class="tabs" id="analysisPeriodTabs">
-            <button class="tab active" data-p="month">월별</button>
-            <button class="tab" data-p="quarter">분기별</button>
-            <button class="tab" data-p="year">연도별</button>
-          </div>
-        </div>
-        <div class="stat-row" id="analysisStatRow" style="padding:12px 18px 4px;"></div>
+      <div class="analysis-body" id="salesAnalysisPanel">
+        <div class="stat-row" id="analysisStatRow" style="margin-bottom:18px;"></div>
 
         <div class="analysis-section-label">추이</div>
         <div class="analysis-two-col">
@@ -450,7 +449,7 @@
             <div class="filter-group"><label>브랜드</label><select class="filter-select" id="filterBrand"></select></div>
             <div class="filter-group"><label>발주처</label><select class="filter-select" id="filterClient"></select></div>
             <div class="filter-group"><label>담당자</label><select class="filter-select" id="filterRep"></select></div>
-            <button class="unpaid-toggle" id="unpaidOnlyBtn" type="button">미입금만 보기</button>
+            <button class="unpaid-toggle" id="unpaidOnlyBtn" type="button">미수금만 보기</button>
             <div class="toolbar-right">
               <button class="export-btn" id="salesExportBtn" type="button">엑셀로 내보내기</button>
             </div>
@@ -661,22 +660,21 @@
       </div>
     </div>
 
-    <div class="section-tabs" id="sectionTabs">
-      <button class="section-tab active" data-sec="list">매출 내역</button>
-      <button class="section-tab" data-sec="analysis">매출 분석</button>
+    <div class="section-tabs-row">
+      <div class="section-tabs" id="sectionTabs">
+        <button class="section-tab active" data-sec="list">매출 내역</button>
+        <button class="section-tab" data-sec="analysis">매출 분석</button>
+      </div>
+      <div class="tabs" id="revAnalysisPeriodTabs" hidden>
+        <button class="tab active" data-p="month">월별</button>
+        <button class="tab" data-p="quarter">분기별</button>
+        <button class="tab" data-p="year">연도별</button>
+      </div>
     </div>
 
     <div class="section-panel" data-sec="analysis" hidden>
-      <div class="panel" id="analysisPanel">
-        <div class="panel-head">
-          <h2>매출 분석 <span class="admin-tag">관리자 전용</span></h2>
-          <div class="tabs" id="revAnalysisPeriodTabs">
-            <button class="tab active" data-p="month">월별</button>
-            <button class="tab" data-p="quarter">분기별</button>
-            <button class="tab" data-p="year">연도별</button>
-          </div>
-        </div>
-        <div class="stat-row" id="revAnalysisStatRow" style="padding:12px 18px 4px;"></div>
+      <div class="analysis-body" id="analysisPanel">
+        <div class="stat-row" id="revAnalysisStatRow" style="margin-bottom:18px;"></div>
 
         <div class="analysis-section-label">추이</div>
         <div class="analysis-two-col">
@@ -794,7 +792,7 @@
             <div class="filter-group"><label>브랜드</label><select class="filter-select" id="brandFilter"></select></div>
             <div class="filter-group"><label>발주처</label><select class="filter-select" id="clientFilter"></select></div>
             <div class="filter-group"><label>담당자</label><select class="filter-select" id="repFilter"></select></div>
-            <button class="unpaid-toggle" id="unpaidOnlyBtn" type="button">미입금만 보기</button>
+            <button class="unpaid-toggle" id="unpaidOnlyBtn" type="button">미수금만 보기</button>
             <div class="upload-wrap">
               <label class="upload-btn">
                 엑셀/CSV 업로드
@@ -809,7 +807,8 @@
         <table>
           <thead>
             <tr>
-              <th>날짜</th><th>브랜드</th><th>발주처</th><th>점포명</th><th>담당자</th>
+              <th class="center">No.</th><th>브랜드</th><th>발주처</th><th>점포명</th><th>담당자</th>
+              <th>수주일</th><th>수주확정일</th><th>매출일</th>
               <th style="text-align:right">견적금액</th><th style="text-align:right">수주액</th><th class="center">입금 현황</th>
             </tr>
           </thead>
@@ -1443,7 +1442,17 @@
   function clientShortCode(raw){
     if (!raw) return raw;
     const canon = clientLabel(raw);
-    return CLIENT_CODE_MAP[canon] || CLIENT_CODE_MAP[raw] || canon;
+    if (CLIENT_CODE_MAP[canon]) return CLIENT_CODE_MAP[canon];
+    if (CLIENT_CODE_MAP[raw]) return CLIENT_CODE_MAP[raw];
+    // 방어적 처리: "PB 파리바게뜨"처럼 코드가 이름 앞에 그대로 붙어 들어온 값도
+    // 뒤의 이름 부분만 떼어 다시 코드를 찾아본다 — 코드가 있는 발주처는 항상 코드만 보여야 한다.
+    if (raw.includes(' ')) {
+      const rest = raw.slice(raw.indexOf(' ') + 1).trim();
+      const restCanon = clientLabel(rest);
+      if (CLIENT_CODE_MAP[restCanon]) return CLIENT_CODE_MAP[restCanon];
+      if (CLIENT_CODE_MAP[rest]) return CLIENT_CODE_MAP[rest];
+    }
+    return canon;
   }
   // 브랜드 테이블(BRAND_MASTER)을 나중에 정리하면서 브랜드 표기("코드 이름")는 brandLabel()로 통일했지만,
   // 영업/매출 데이터에 예전 방식으로 저장된 브랜드·발주처 값은 그대로 남아 있었다.
@@ -1967,19 +1976,29 @@
   // 매출 관리 쪽 입금 현황·미수금도 별도 동기화 코드 없이 항상 똑같이 반영된다.
   // 기존에 이미 들어있던 매출 관리 예시 데이터(위 REVENUE_ALL 224건)는 그대로 두고,
   // 이 연동은 지금부터 새로 확정되는 수주부터 적용된다.
+  // 납품 일정이 여러 건인 수주 건의 매출 인식 시점 — 일부만 납품된 시점에 전체 금액을 매출로
+  // 당겨 잡지 않고, "전부 납품이 끝나는" 가장 마지막 납품일에 전체 금액을 한 번에 매출로 잡는다.
+  function orderLastDeliveryDate(o){
+    const dates = ORDER_TASKS.filter(t => t.orderId === o.id).map(t => t.date).filter(Boolean).sort();
+    if (dates.length) return dates[dates.length - 1];
+    return o.next || o.orderDate;
+  }
   function syncRevenueFromOrder(o){
     if (!Array.isArray(o.payments)) o.payments = [];
     const idx = REVENUE_ALL.findIndex(r => r.linkedOrderId === o.id);
     if (o.confirmed && o.finalAmount != null) {
+      // 매출은 수주일이 아니라 실제 납품일 기준으로 잡되, 납품이 여러 건이면 그중 가장 마지막
+      // (전체 납품 완료) 날짜를 기준으로 전체 금액을 한 번에 잡는다.
+      const revDate = orderLastDeliveryDate(o);
       if (idx >= 0) {
         const r = REVENUE_ALL[idx];
-        r.date = o.orderDate; r.brand = o.brand; r.client = o.client; r.store = o.store;
+        r.date = revDate; r.brand = o.brand; r.client = o.client; r.store = o.store;
         r.rep = o.rep; r.quoteAmount = o.amount; r.finalAmount = o.finalAmount; r.confirmed = true;
         r.payments = o.payments;
       } else {
         const newId = REVENUE_ALL.length ? Math.max(...REVENUE_ALL.map(x => x.id)) + 1 : 0;
         REVENUE_ALL.push({
-          id: newId, linkedOrderId: o.id, date: o.orderDate, brand: o.brand, client: o.client,
+          id: newId, linkedOrderId: o.id, date: revDate, brand: o.brand, client: o.client,
           store: o.store, rep: o.rep, quoteAmount: o.amount, finalAmount: o.finalAmount,
           confirmed: true, payments: o.payments,
         });
@@ -2001,7 +2020,7 @@
   const scheduleCSS = `
     :host{
       display:block;
-      --metal-yellow:#f4c430;
+      --metal-color:#4b5563;
       background:var(--bg); color:var(--text);
       font-family:'IBM Plex Sans KR', 'Pretendard', 'Malgun Gothic', sans-serif;
       -webkit-font-smoothing:antialiased;
@@ -2013,11 +2032,11 @@
     :host(.mode-tv){
       color-scheme: dark;
       --bg:#000000; --surface:#000000; --surface-2:#141414; --surface-3:#1e1e1e;
-      --border:#ffffff; --text:#f4f4f4; --text-muted:#aaaaaa; --text-faint:#707070;
+      --border:#3a3a3a; --text:#f4f4f4; --text-muted:#aaaaaa; --text-faint:#707070;
       --accent:#e9e9e9; --accent-soft:rgba(233,233,233,.14);
       --status-done:#8a8a8a; --status-done-soft:rgba(138,138,138,.14);
       --shadow:none; --overlay: rgba(0,0,0,.7);
-      --tv-red:#ff0000; --tv-metal:#ffab00;
+      --tv-red:#ff0000; --tv-metal:#8f8f8f;
       /* 현장 모니터 해상도가 제각각이라(예: 1920x1080 vs 3840x2160 4K), 글씨 크기를
          고정 px로만 두면 화면이 클수록 칸에 비해 글씨가 작아 보인다("칸 안에 안 꽉
          참"). 화면 너비를 기준으로 한 번 더 곱해주는 배율을 두어, 해상도가 커지면
@@ -2034,7 +2053,11 @@
     .mono{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric:tabular-nums; }
     button{ font-family:inherit; }
 
-    .board{ display:flex; flex-direction:column; gap:10px; padding:12px 20px; height:100vh; overflow:hidden; }
+    /* 다른 화면들(영업/매출/브랜드 등)과 상단 여백·좌우 여백·"DOMUS" 아래 내용 시작 간격을
+       똑같이 맞춘다 — 일정표만 유난히 좁게(12px/20px, gap 10px) 잡혀 있었다.
+       세로 스크롤 없이 화면에 꽉 채우는 레이아웃(height:100vh)이라 다른 화면처럼
+       하단에 넉넉한 여백(60~80px)까지 줄 필요는 없어 아래쪽만 작게 남긴다. */
+    .board{ display:flex; flex-direction:column; gap:16px; padding:24px 24px 12px; height:100vh; overflow:hidden; }
 
     .topbar{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
     .brand{ display:flex; align-items:baseline; gap:12px; }
@@ -2068,7 +2091,7 @@
     :host(.mode-tv) .topbar{
       justify-content:space-between;
       padding-bottom:calc(var(--tv-res-scale, 1) * 6px);
-      border-bottom:0.5px solid var(--border);
+      border-bottom:0.5px solid rgba(255,255,255,.55);
     }
     /* 오른쪽 위 시각(26px)과 크기를 맞춘다. */
     :host(.mode-tv) .tv-date{ display:block; font-size:calc(var(--tv-res-scale, 1) * 18px); font-weight:600; color:var(--text); letter-spacing:-.01em; }
@@ -2093,7 +2116,7 @@
     :host(.mode-tv) .panel{ overflow:hidden; }
     .cal-week-row .day-cell:last-child{ border-right:none; }
 
-    .panel{ flex:1; min-height:0; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; }
+    .panel{ flex:1; min-height:0; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:none; overflow:hidden; }
     .cal-head{ flex:none; padding:9px 16px; border-bottom:1px solid var(--border); }
     /* 현장(TV) 모드는 왼쪽 위에 날짜를 이미 따로 보여주므로, 가운데 이 헤더(연도/화살표/
        오늘 날짜/휴일버튼)는 통째로 필요 없다 — 지워서 달력에 세로 공간을 더 준다. */
@@ -2138,9 +2161,9 @@
        맞춰 너무 두껍지 않게(600→400), 크기는 아주 조금만 키운다. */
     :host(.mode-tv) .weekdays div{
       font-size:calc(var(--tv-res-scale, 1) * 15.5px); font-weight:400; color:#ffffff;
-      border-right:0.5px solid var(--border);
+      border-right:0.5px solid rgba(255,255,255,.55);
     }
-    :host(.mode-tv) .weekdays{ border-bottom-width:0.5px; }
+    :host(.mode-tv) .weekdays{ border-bottom-width:0.5px; border-bottom-color:rgba(255,255,255,.55); }
     :host(.mode-tv) .weekdays div:nth-child(7n){ border-right:none; }
     .weekdays div.sun{ color:#ff6b64; }
     .weekdays div.sat{ color:var(--accent); }
@@ -2172,6 +2195,7 @@
       padding:calc(var(--tv-res-scale, 1) * 4px) calc(var(--tv-res-scale, 1) * 5px);
       gap:calc(var(--tv-res-scale, 1) * 2px);
       border-right-width:0.5px; border-bottom-width:0.5px;
+      border-right-color:rgba(255,255,255,.55); border-bottom-color:rgba(255,255,255,.55);
     }
     /* 오늘은 칸 전체 배경을 흰색으로 채우는 것 자체가 표시라서, 테두리는 따로 필요 없다
        (흰 배경 위에 흰 테두리는 안 보이기도 한다) — 배경은 아래에서 지정. */
@@ -2197,9 +2221,8 @@
     .day-cell.sat .day-num{ color:var(--accent); }
     .day-cell.is-today.sun .day-num, .day-cell.is-today.sat .day-num, .day-cell.is-today.holiday .day-num{ color:#fff; }
     :host(.mode-tv) .day-cell.sun .day-num, :host(.mode-tv) .day-cell.holiday .day-num{ color:var(--tv-red); }
-    /* 오늘 날짜는 동그란 배지를 없애 심플하게 두되, 칸 배경이 흰색으로 바뀌므로
-       날짜 숫자 색은 검정 계열로 바꿔야 보인다. */
-    :host(.mode-tv) .day-cell.is-today .day-num{ background:none; color:#0a0a0a; }
+    /* 오늘 날짜는 동그란 배지 없이, 칸 배경도 검정 그대로라 다른 날짜와 같은 흰색 글씨를 쓴다. */
+    :host(.mode-tv) .day-cell.is-today .day-num{ background:none; color:var(--text); }
     :host(.mode-tv) .day-cell.is-today.sun .day-num,
     :host(.mode-tv) .day-cell.is-today.holiday .day-num{ background:none; color:var(--tv-red); }
     /* 연휴 라벨은 날짜 칸 안에서 참고 정보일 뿐, 실제 작업 내용(.chip-row2)보다 눈에 덜 띄어야 한다.
@@ -2221,14 +2244,15 @@
        공간이 남는데, 진짜 글자 크기를 줄이면 줄바꿈이 다시 계산돼 가로 폭을 그대로 꽉
        채운다. */
     :host(.mode-tv) .day-events{ overflow:hidden; gap:calc(var(--tv-res-scale, 1) * 2px); }
-    /* 일반 모드: 검은 칸이 아니라 앱 다른 곳(태그·필 등)과 같은 은은한 색감을 쓴다 —
-       옅은 배경 + 왼쪽 색 띠로 구분하고, 글자 크기도 목록·표 화면과 같은 13px 안팎.
-       현장(TV) 모드는 화면과의 거리가 멀어서 아래에서 다시 검은 배경 + 큰 글자로 되돌린다.
-       색은 검정/흰색 위주로 단순하게 두고, 빨강은 오늘·일요일·휴일 강조용으로만 쓴다. */
+    /* 일반 모드: 일정 하나하나를 옅은 회색 카드로 감싸지 않는다 — 배경 없이 텍스트만
+       놓이고, 작업량 박스(검정/회색)와 글자 색만으로 구분한다. 글자 크기는 목록·표
+       화면과 같은 13px 안팎. 현장(TV) 모드는 화면과의 거리가 멀어서 아래에서 다시
+       큰 글자로 되돌린다. 색은 검정/흰색 위주로 단순하게 두고, 빨강은 오늘·일요일·
+       휴일 강조용으로만 쓴다. */
     .ev-chip{
       flex:none; font-size:calc(var(--day-scale, 1) * 13px); font-weight:600;
-      padding:calc(var(--day-scale, 1) * 4px) calc(var(--day-scale, 1) * 6px) calc(var(--day-scale, 1) * 4px) calc(var(--day-scale, 1) * 8px);
-      border-radius:6px; background:var(--surface-2); color:var(--text); border-left:3px solid var(--accent);
+      padding:calc(var(--day-scale, 1) * 4px) calc(var(--day-scale, 1) * 6px);
+      border-radius:6px; background:none; color:var(--text);
       display:flex; flex-direction:row; align-items:flex-start; gap:6px;
     }
     :host(.mode-tv) .ev-chip{
@@ -2246,7 +2270,7 @@
     }
     .chip-row1{ display:flex; align-items:baseline; flex:none; padding-top:1px; }
     .chip-qty{
-      font-weight:700; font-size:calc(var(--day-scale, 1) * 11px); color:var(--accent); background:var(--accent-soft);
+      font-weight:700; font-size:calc(var(--day-scale, 1) * 11px); color:#fff; background:#000;
       padding:1px 6px; border-radius:4px; white-space:nowrap;
     }
     /* 작업량 배지는 본문 글씨보다 확실히 작게 — 시선이 작업 내용(점포·담당자)에 먼저 가게 한다. */
@@ -2262,31 +2286,28 @@
     }
     /* 내용을 줄이지 않고 다 보여주는 게 우선이라, 한 줄로 자르지 않고 줄바꿈해서 전부 표시한다.
        칸에 다 안 들어가면 day-events가 세로 스크롤되어 잘리는 일 없이 전부 볼 수 있다. */
-    /* 다른 화면에서 라벨·보조 텍스트에 계속 써온 회색(text-muted)으로 —
-       일반 텍스트색(거의 검정)은 이 카드 안에서 너무 무겁게 보였다. */
+    /* 금속이 아닌 일반 내용은 다른 화면 본문 글씨와 같은 진한 검정 계열로, 금속만
+       회색(--metal-color)으로 구분한다(아래 .ev-chip.metal 참고). */
     .chip-row2{
-      flex:1; min-width:0; font-size:calc(var(--day-scale, 1) * 13px); font-weight:600; color:var(--text-muted);
+      flex:1; min-width:0; font-size:calc(var(--day-scale, 1) * 13px); font-weight:600; color:var(--text);
       letter-spacing:-.005em; white-space:normal; word-break:break-word;
     }
     :host(.mode-tv) .chip-row2{ font-size:calc(var(--tv-scale, 1) * 14px); font-weight:400; color:#fff; }
     /* 휴일/기타 사내 일정 메모는 붉은 계열의 옅은 색으로 구분한다. */
-    .ev-chip.holiday{ background:var(--danger-soft); color:var(--danger); border-left-color:var(--danger); }
-    :host(.mode-tv) .ev-chip.holiday{ color:var(--tv-red); background:none; border-left:none; }
-    .ev-chip.metal{ border-left-color:var(--metal-yellow); }
-    .ev-chip.metal .chip-qty{ background:rgba(244,196,48,.18); color:#8a6d00; }
-    .ev-chip.metal .chip-row2{ color:#8a6d00; }
-    /* 금속 작업은 박스(배경)가 아니라 노란색 글자·뱃지로만 구분한다. */
+    .ev-chip.holiday{ background:var(--danger-soft); color:var(--danger); }
+    :host(.mode-tv) .ev-chip.holiday{ color:var(--tv-red); background:none; }
+    /* 금속 작업은 노란색이 아니라 회색 글자·뱃지로만 구분한다(박스로 감싸지 않음). */
+    .ev-chip.metal .chip-qty{ background:rgba(75,85,99,.14); color:var(--metal-color); }
+    .ev-chip.metal .chip-row2{ color:var(--metal-color); }
     :host(.mode-tv) .ev-chip.metal .chip-qty{ background:var(--tv-metal); color:#141414; }
     :host(.mode-tv) .ev-chip.metal .chip-row2{ color:var(--tv-metal); }
-    /* 오늘은 일정 하나하나가 아니라 그 날짜 칸 전체 배경을 흰색으로 준다. 흰 배경
-       위에서는 기본(검정 계열) 글씨·뱃지로 바꿔야 보인다 — 단, 금속 작업의 노란색은
-       흰 배경에서 밝은 노랑은 잘 안 보이므로 어두운 노란색으로 바꿔서 그대로 유지한다. */
-    :host(.mode-tv) .day-cell.is-today{ background:#ffffff; }
-    :host(.mode-tv) .day-cell.is-today .chip-row2{ color:#0a0a0a; }
-    :host(.mode-tv) .day-cell.is-today .chip-qty{ background:#0a0a0a; color:#fff; }
-    :host(.mode-tv) .day-cell.is-today .ev-chip.metal .chip-row2{ color:#8a6d00; }
-    :host(.mode-tv) .day-cell.is-today .ev-chip.metal .chip-qty{ background:var(--tv-metal); color:#141414; }
-    .ev-chip.is-done{ opacity:.55; text-decoration:line-through; }
+    /* 오늘은 배경은 다른 날짜와 똑같이 검정으로 두고, 굵은 흰색 테두리로만 구분한다.
+       box-shadow(inset)를 써서 옆 칸과의 격자선이나 칸 크기에 영향을 주지 않는다. */
+    :host(.mode-tv) .day-cell.is-today{
+      background:var(--bg);
+      box-shadow:inset 0 0 0 calc(var(--tv-res-scale, 1) * 4px) #ffffff;
+    }
+    .ev-chip.is-done{ opacity:.55; }
     .ev-more{ font-size:19px; font-weight:600; color:var(--text); padding-left:2px; }
     /* 칸 안에 다 담기지 않아 스크롤이 필요한 날은, 아래쪽에 옅은 그라데이션과 화살표로
        "더 있다"는 걸 알려준다(잘려서 안 보이는 걸 모르고 지나치지 않도록). */
@@ -2302,7 +2323,7 @@
     }
     :host(.mode-tv) .day-cell.has-more::after,
     :host(.mode-tv) .day-cell.has-more::before{ content:none; }
-    .pill.edit{ background:var(--surface-3); color:var(--text-muted); border:1px solid var(--border); margin-right:6px; }
+    .pill.edit{ background:var(--surface-3); color:var(--text-muted); border:1px solid var(--border); }
     .ev-edit-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
     .ev-edit-field{ display:flex; flex-direction:column; gap:4px; }
     .ev-edit-field.full{ grid-column:1 / -1; }
@@ -2353,21 +2374,27 @@
     /* 예전에는 이 카드가 검정 배경/흰 글씨로 고정돼 있어서, 일반(라이트) 일정표에서 봐도
        현장(TV) 모드처럼 새까맣게 나왔다 — 일정표 칸의 색 변수를 그대로 따라가게 바꿔서
        일반 모드에서는 밝은 카드로, 현장 모드에서는 (변수가 자동으로 어두워지므로) 그대로 어둡게 보이게 한다. */
+    /* 날짜 자세히 보기 카드 — 일반 내용은 검정, 금속은 회색 왼쪽 띠로 구분한다
+       (일정표 칸 자체는 색띠 없이 글자 색만으로 구분하지만, 자세히 보기 카드는 여러 건이
+       세로로 나열되므로 왼쪽 띠가 있어야 건별 구분이 한눈에 들어온다). */
     .ev-card{
-      background:var(--surface-2); border:1px solid var(--border); border-left:4px solid var(--accent);
+      background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--text);
       border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:5px;
     }
-    .ev-card.holiday{ border-left-color:var(--danger); background:var(--danger-soft); }
+    /* 일반은 검정 띠, 금속은 연한 회색 띠로 — 두께는 똑같이 두고 색만으로 구분한다.
+       카드 배경에도 옅은 회색 톤을 깔아서 한눈에 바로 구분되게 한다(휴일 카드가
+       옅은 빨강 배경을 쓰는 것과 같은 방식). */
+    .ev-card.metal{ background:rgba(75,85,99,.22); border-left-color:#9ca3af; }
+    :host(.mode-tv) .ev-card.metal{ background:none; border-left-color:var(--tv-metal); }
+    .ev-card.holiday{ background:var(--danger-soft); border-left-color:var(--danger); }
     /* --danger/--danger-soft는 라이트 값 그대로라 어두운 현장 모드 배경 위에서는 잘 안 보인다 —
        현장 모드에서는 원래처럼 검정 배경에 밝은 빨강 글씨로 고정한다. */
     :host(.mode-tv) .ev-card.holiday{ background:#000; border-left-color:var(--tv-red); }
     :host(.mode-tv) .ev-card.holiday .type-tag{ color:var(--tv-red); }
-    .ev-card.metal{ border-left-color:var(--metal-yellow); }
     .ev-card.is-done{ opacity:.6; }
-    .ev-card.is-done .client, .ev-card.is-done .item{ text-decoration:line-through; }
     .ev-card .client{ font-size:15px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; min-width:0; overflow-wrap:break-word; }
-    .ev-card .client.metal{ color:#8a6d00; }
-    :host(.mode-tv) .ev-card .client.metal{ color:var(--metal-yellow); }
+    .ev-card .client.metal{ color:var(--metal-color); }
+    :host(.mode-tv) .ev-card .client.metal{ color:var(--tv-metal); }
     .ev-card .type-tag{ font-weight:700; margin-right:2px; color:var(--accent); }
     .ev-card.holiday .type-tag{ color:var(--danger); }
     .ev-card .item{ font-size:13.5px; font-weight:500; color:var(--text-muted); }
@@ -2441,13 +2468,14 @@
          날짜를 탭하면 전체 목록을 볼 수 있다. */
       :host(:not(.mode-tv)) .ev-chip{
         font-size:9px; overflow:hidden; flex-direction:row; align-items:center;
-        gap:1px; padding:1px 3px 1px 4px; border-radius:3px; border-left-width:2px;
+        gap:1px; padding:1px 3px 1px 4px; border-radius:3px;
       }
       :host(:not(.mode-tv)) .chip-row1{ flex:none; padding-top:0; }
       /* 뱃지를 배경 있는 박스로 두면 그 자체가 자리를 많이 차지해서, 정작 중요한
          점포명이 보일 폭이 확 줄어든다. 모바일 미리보기에서는 박스를 없애고
-         숫자만 옅은 색으로 짧게 붙여서 점포명에 폭을 최대한 몰아준다. */
-      :host(:not(.mode-tv)) .chip-qty{ font-size:8px; padding:0; background:none; color:var(--text-faint); font-weight:700; }
+         숫자만 짧게 붙이되, 색은 데스크탑과 똑같이 일반=검정/금속=회색으로 구분한다. */
+      :host(:not(.mode-tv)) .chip-qty{ font-size:8px; padding:0; background:none; color:var(--text); font-weight:700; }
+      :host(:not(.mode-tv)) .ev-chip.metal .chip-qty{ background:none; color:var(--metal-color); }
       :host(:not(.mode-tv)) .chip-qty::after{ content:'·'; margin-left:2px; color:var(--text-faint); font-weight:400; }
       :host(:not(.mode-tv)) .chip-row2{
         flex:1; width:auto; min-width:0; font-size:9px; line-height:1.35;
@@ -2461,19 +2489,25 @@
     *{ box-sizing:border-box; }
     .mono{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric:tabular-nums; }
 
-    .page{ max-width:1180px; margin:0 auto; padding:24px 24px 60px; display:flex; flex-direction:column; gap:16px; }
+    .page{ max-width:1440px; margin:0 auto; padding:24px 24px 60px; display:flex; flex-direction:column; gap:16px; }
 
     .topbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
     .brand{ display:flex; align-items:baseline; gap:12px; }
     .brand .mark{ font-weight:700; font-size:12px; letter-spacing:.14em; color:var(--accent); text-transform:uppercase; }
     .brand h1{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; }
 
-    .section-tabs{ display:flex; gap:8px; }
+    /* 탭(내역/분석) 바 오른쪽에 분석 전용 기간 탭(월별/분기별/연도별)을 같은 줄에 둔다 —
+       "영업 분석"/"매출 분석"이라는 제목 글씨가 탭 이름과 중복돼서 없앤 대신, 이 줄 하나로
+       탭 전환과 기간 선택을 모두 처리해서 화면 상단을 한 줄 더 줄인다. */
+    .section-tabs-row{ display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px 16px; border-bottom:1px solid var(--border); }
+    .section-tabs-row .tabs{ margin-bottom:8px; }
+    .section-tabs-row .tabs[hidden]{ display:none; }
+    .section-tabs{ display:flex; gap:0; }
     .section-tab{
-      padding:9px 20px; border-radius:10px; border:1px solid var(--border); background:var(--surface);
-      color:var(--text-muted); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+      padding:10px 4px; margin-right:22px; border-radius:0; border:none; border-bottom:2px solid transparent;
+      background:none; color:var(--text-muted); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
     }
-    .section-tab.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+    .section-tab.active{ color:var(--text); font-weight:700; border-bottom-color:var(--accent); }
     .section-panel{ display:flex; flex-direction:column; gap:16px; }
     .section-panel[hidden]{ display:none; }
 
@@ -2481,16 +2515,16 @@
     .filter-row{ display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
     @media (max-width:640px){ .filter-row{ grid-template-columns:repeat(2, 1fr); } }
     .unpaid-toggle{
-      padding:7px 16px; border-radius:8px; border:1px solid var(--danger); background:var(--danger-soft);
-      color:var(--danger); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;
+      padding:7px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+      color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;
     }
-    .unpaid-toggle.active{ background:var(--danger); border-color:var(--danger); color:#fff; }
+    .unpaid-toggle.active{ background:var(--text); border-color:var(--text); color:#fff; }
     .export-btn{
       display:inline-flex; align-items:center; gap:6px;
-      padding:7px 13px; border-radius:9px; border:1px solid var(--accent); background:var(--accent-soft);
-      color:var(--accent); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+      padding:7px 16px; border-radius:8px; border:1px solid var(--accent); background:var(--accent);
+      color:#fff; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
     }
-    .export-btn:hover{ filter:brightness(0.97); }
+    .export-btn:hover{ filter:brightness(1.06); }
     .filter-group{ display:flex; flex-direction:column; gap:4px; min-width:0; }
     .filter-group label{ font-size:10.5px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.03em; }
     .filter-select{
@@ -2500,14 +2534,14 @@
     }
     .search-box{ position:relative; width:100%; }
     .search-box input{
-      width:100%; padding:11px 14px 11px 38px; border-radius:12px; border:1px solid var(--border);
-      background:var(--surface); color:var(--text); font-size:14px; font-family:inherit;
+      width:100%; padding:10px 14px 10px 38px; border-radius:8px; border:1px solid var(--border);
+      background:var(--surface); color:var(--text); font-size:13.5px; font-family:inherit;
     }
     .search-box input::placeholder{ color:var(--text-faint); }
     .search-box svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); }
 
     .client-panel{
-      background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow);
+      background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:none;
       padding:16px 18px; display:none; flex-direction:column; gap:12px;
     }
     .client-panel.show{ display:flex; }
@@ -2530,7 +2564,7 @@
     .more-link{ font-size:12.5px; color:var(--accent); background:none; border:none; cursor:pointer; font-family:inherit; padding:0; text-align:left; }
 
     table{ min-width:100%; border-collapse:collapse; font-size:13.5px; }
-    .table-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); overflow-x:auto; }
+    .table-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:none; overflow-x:auto; }
     .table-scroll{ overflow-x:auto; position:relative; }
     @media (max-width:720px){
       /* 스크롤 가능함을 알려주려던 오른쪽 페이드 효과가, 실제로는 스크롤된 셀 글자 위에
@@ -2557,19 +2591,20 @@
     .ts-arrow:hover{ background:var(--surface-3); }
     .ts-arrow:disabled{ opacity:.35; cursor:default; }
     thead th{
-      text-align:left; padding:11px 14px; font-size:12px; font-weight:700; color:var(--text-faint);
+      text-align:left; padding:11px 12px; font-size:12px; font-weight:700; color:var(--text-faint);
       border-bottom:1px solid var(--border); white-space:nowrap;
     }
-    tbody td{ padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; white-space:nowrap; }
+    tbody td{ padding:12px 12px; border-bottom:1px solid var(--border); vertical-align:middle; white-space:nowrap; }
     tbody tr:last-child td{ border-bottom:none; }
     tbody tr:hover td{ background:var(--surface-2); }
     tbody tr.editing td{ background:var(--surface-2); }
     .col-num{ width:48px; text-align:center; color:var(--text-faint); font-size:12.5px; font-weight:600; }
     /* 수정 모드에서 저장/취소 버튼이 표 오른쪽 끝에 있어 옆으로 스크롤해야만 눌렀는데,
        이 칸을 화면 오른쪽에 고정(sticky)해서 스크롤하지 않아도 항상 보이고 바로 누를 수 있게 한다. */
-    .col-manage{ width:1%; text-align:right; position:sticky; right:0; z-index:2; background:var(--surface); box-shadow:-6px 0 8px -6px rgba(0,0,0,.18); }
+    .col-manage{ width:1%; text-align:right; position:sticky; right:0; z-index:2; background:var(--surface); box-shadow:-6px 0 8px -6px rgba(0,0,0,.18); padding-left:8px !important; padding-right:8px !important; }
     thead th.col-manage{ background:var(--surface); z-index:3; }
-    tr.group-head td.col-manage, tr.grand-total td.col-manage{ background:var(--surface-2); box-shadow:none; }
+    tr.group-head td.col-manage{ background:var(--surface-2); box-shadow:none; }
+    tr.grand-total td.col-manage{ background:var(--surface-3); box-shadow:none; }
 
     .edit-rep, .edit-orderdate, .edit-confirmdate, .edit-next, .edit-amount, .edit-finalamount{
       padding:7px 9px; border-radius:8px; border:1px solid var(--border);
@@ -2579,9 +2614,9 @@
     .edit-rep:focus, .edit-orderdate:focus, .edit-confirmdate:focus, .edit-next:focus, .edit-amount:focus, .edit-finalamount:focus{
       outline:none; border-color:var(--accent);
     }
-    .edit-orderdate{ width:138px; }
-    .edit-confirmdate{ width:138px; }
-    .edit-next{ width:138px; }
+    .edit-orderdate{ width:112px; }
+    .edit-confirmdate{ width:112px; }
+    .edit-next{ width:112px; }
     .edit-orderdate, .edit-confirmdate, .edit-next{ cursor:pointer; }
     /* 커스텀 한국어 날짜 표기 오버레이 — 달력 아이콘/클릭은 그대로, 입력칸 텍스트만 투명 처리하고
        위에 "YYYY.MM.DD" 형식 텍스트를 덧씌운다. */
@@ -2593,18 +2628,27 @@
       color:var(--text);
     }
     .kdate-overlay.kdate-empty{ color:var(--text-faint); }
-    .edit-amount{ width:110px; }
-    .edit-finalamount{ width:110px; }
+    .edit-amount{ width:86px; }
+    .edit-finalamount{ width:86px; }
     .edit-finalamount::placeholder{ color:var(--text-faint); font-size:11.5px; }
     .row-btn{
-      padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
+      padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
       color:var(--text); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap;
     }
     .row-btn:hover{ background:var(--surface-3); }
-    .row-btn.save-row{ background:var(--accent); border-color:var(--accent); color:#fff; margin-right:6px; }
+    .row-btn.save-row{ background:var(--accent); border-color:var(--accent); color:#fff; margin-right:4px; }
     .row-btn.save-row:hover{ filter:brightness(1.05); }
     .row-btn.cancel-row{ margin-left:0; }
-    .row-btn.edit-row{}
+    .row-btn.edit-row{ background:none; border-color:transparent; color:var(--accent); }
+    .row-btn.edit-row:hover{ background:var(--accent-soft); }
+    .row-btn.delete-row{
+      padding:6px 8px; margin-right:2px; background:var(--danger); border-color:var(--danger); color:#fff;
+    }
+    .row-btn.delete-row:hover{ filter:brightness(1.05); }
+    .row-btn.delete-ok{ background:var(--danger); border-color:var(--danger); color:#fff; }
+    .row-btn.delete-ok:hover{ filter:brightness(1.05); }
+    td.delete-confirm-text{ font-size:12.5px; color:var(--danger); font-weight:600; white-space:normal; }
+    tr.delete-confirm-row .col-manage{ white-space:nowrap; }
 
     .cell-client .name{ font-weight:600; }
     .cell-client .brand{ font-size:11.5px; color:var(--text-faint); }
@@ -2612,6 +2656,20 @@
     .urgent-tag{ font-size:10.5px; font-weight:700; color:var(--urgent); background:var(--urgent-soft); border-radius:5px; padding:1px 6px; margin-left:6px; }
 
     .amount{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric:tabular-nums; font-weight:600; text-align:right; }
+    .date-more-wrap{ position:relative; display:inline-block; }
+    .date-more{ font-family:'IBM Plex Sans KR',sans-serif; font-size:11px; font-weight:600; color:var(--text-faint); cursor:default; }
+    .date-more-tooltip{
+      display:none; position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
+      background:var(--text); color:var(--surface); font-size:11.5px; font-weight:600; white-space:nowrap;
+      padding:7px 10px; border-radius:8px; z-index:30; box-shadow:0 4px 14px rgba(0,0,0,.18);
+      font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace;
+    }
+    .date-more-tooltip::after{
+      content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+      border:5px solid transparent; border-top-color:var(--text);
+    }
+    .date-more-wrap:hover .date-more-tooltip{ display:block; }
+    .date-more-wrap:hover .date-more{ color:var(--text); }
     .amount.masked{ color:var(--text-faint); letter-spacing:.06em; }
     .amount.muted{ color:var(--text-faint); font-weight:400; }
 
@@ -2626,7 +2684,7 @@
       font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:20px; cursor:pointer; font-family:inherit;
       display:inline-flex; align-items:center; gap:6px;
     }
-    .pay-cell-btn.full{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+    .pay-cell-btn.full{ background:var(--text); border-color:var(--text); color:#fff; }
     .pay-cell-btn.none{ background:var(--surface); color:var(--text-faint); }
     .pay-cell-btn.partial{ background:var(--surface-2); border-color:var(--border); color:var(--text); padding:5px 10px 5px 8px; }
     .pay-cell-btn.masked{ border:1px solid var(--border); background:var(--surface); color:var(--text-faint); padding:4px 10px; border-radius:20px; letter-spacing:.06em; cursor:default; }
@@ -2689,6 +2747,13 @@
     .pay-item-editing .pay-item-actions{ grid-column:1 / -1; display:flex; justify-content:flex-end; margin-top:2px; }
     .pay-item-editing .pay-item-actions button{ width:auto; height:auto; padding:6px 12px; font-size:11.5px; font-weight:700; border-radius:7px; }
     .pay-item-editing .save-pay{ background:var(--accent); border-color:var(--accent); color:#fff; }
+    /* 입금 내역 삭제 확인 — 다른 화면의 삭제 확인 패턴과 똑같이, 바로 지우지 않고 한 번 더 물어본다. */
+    .pay-item.pay-item-delete-confirm{ background:var(--surface); justify-content:space-between; }
+    .pay-item-delete-confirm .delete-confirm-text{ font-size:12px; color:var(--danger); font-weight:600; }
+    .pay-item-delete-confirm .pay-item-actions button{
+      width:auto; height:auto; padding:6px 12px; font-size:11.5px; font-weight:700; border-radius:7px;
+    }
+    .pay-item-delete-confirm .pay-del-ok{ background:var(--danger); border-color:var(--danger); color:#fff; }
     /* 날짜/구분/금액 세 칸을 항상 같은 폭으로 나란히 두고, 추가 버튼은 그 아래 한 줄 전체로 —
        화면 폭에 따라 줄바꿈되며 들쭉날쭉해지던 문제를 없애기 위해 뷰포트 조건 없이 항상 이 배치를 쓴다. */
     .pay-add-form{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; align-items:end; padding-top:12px; border-top:1px dashed var(--border); }
@@ -2716,25 +2781,30 @@
 
     .foot{ padding:10px 18px; font-size:11.5px; color:var(--text-faint); border-top:1px solid var(--border); }
 
-    tr.group-head td{ background:var(--surface-2); font-weight:700; font-size:12.5px; color:var(--text-muted); padding:9px 18px; }
-    tr.group-head td.amount{ color:var(--text); }
+    tr.group-head td{
+      background:var(--surface-2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+      font-weight:700; font-size:12.5px; color:var(--text-muted); padding:10px 12px;
+    }
+    tr.group-head td.amount{ color:var(--text); font-size:13px; }
     tr.group-head:hover td{ background:var(--surface-3); }
     tr.group-head .group-caret{ display:inline-block; width:12px; color:var(--text-faint); }
+    /* 지금 펼쳐서 보고 있는 달만 연한 파란 틴트로 강조 — 접힌 달들은 회색 그대로 둬서
+       "지금 여기를 보고 있다"는 게 스크롤 중에도 한눈에 들어오게 한다. */
+    tr.group-head.expanded td{ background:var(--accent-soft); border-bottom-color:var(--accent-soft); }
+    tr.group-head.expanded td.amount{ color:var(--accent); }
+    tr.group-head.expanded:hover td{ background:var(--accent-soft); filter:brightness(0.97); }
+    tr.group-head.expanded td.col-manage{ background:var(--accent-soft); }
 
     tr.grand-total td{
-      background:var(--surface-2); font-weight:700; font-size:13px; color:var(--text);
-      padding:12px 18px; border-top:2px solid var(--border); border-bottom:none;
+      background:var(--surface-3); font-weight:700; font-size:13.5px; color:var(--text);
+      padding:13px 12px; border-top:none; border-bottom:none;
     }
-    tr.grand-total td.amount{ color:var(--accent); font-size:14px; }
+    tr.grand-total td.amount{ color:var(--accent); font-size:15px; }
 
     /* ---- 영업 분석 (관리자 전용) ---- */
-    .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); }
+    .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:none; }
     .panel-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
     .panel-head h2{ margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
-    .admin-tag{
-      font-size:10.5px; font-weight:700; color:var(--accent); background:var(--accent-soft);
-      border-radius:6px; padding:2px 8px; letter-spacing:.02em;
-    }
     .tabs{ display:flex; gap:6px; overflow-x:auto; max-width:100%; min-width:0; -webkit-overflow-scrolling:touch; }
     .revenue-toolbar{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; width:100%; min-width:0; }
     .tab{
@@ -2743,15 +2813,18 @@
     }
     .tab.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
 
-    .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-    @media (max-width:720px){ .stat-row{ grid-template-columns:repeat(2,1fr); } }
-    .stat{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); min-width:0; }
+    /* 4개 카드를 각각 테두리로 감싸지 않고, 하나의 플랫한 띠 안에서 세로 구분선으로만
+       나눈다 — 박스가 많으면 산만해 보여서 더 단순하게 정리. */
+    .stat-row{ display:flex; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+    @media (max-width:720px){ .stat-row{ flex-wrap:wrap; } .stat{ width:50%; } }
+    .stat{ flex:1; display:flex; flex-direction:column; background:var(--surface); border:none; border-left:1px solid var(--border); border-radius:0; padding:16px 20px; box-shadow:none; min-width:0; }
+    .stat:first-child{ border-left:none; }
     .stat .label{ font-size:12px; color:var(--text-faint); word-break:keep-all; overflow-wrap:break-word; }
     .stat .num{ font-size:22px; font-weight:700; margin-top:4px; white-space:nowrap; }
     .stat .num.empty-val{ font-size:14px; font-weight:600; color:var(--text-faint); white-space:normal; }
     @media (max-width:420px){ .stat{ padding:12px 10px; } .stat .num{ font-size:15px; } }
     .stat-top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-    .stat-compare{ display:flex; flex-direction:column; gap:2px; margin-top:7px; }
+    .stat-compare{ display:flex; flex-direction:column; gap:2px; margin-top:auto; padding-top:7px; }
     .stat-compare .cmp-item{ font-size:10.5px; color:var(--text-faint); display:flex; align-items:center; gap:4px; white-space:nowrap; }
     .delta{ font-weight:700; }
     .delta.up{ color:var(--ok); }
@@ -2783,24 +2856,26 @@
     svg{ touch-action:pan-y; }
 
     .chart-sub{ font-size:11px; color:var(--text-faint); margin-top:6px; }
-    .entity-trend-section{ margin:0 18px 18px; padding:14px 16px 18px; background:var(--surface-2); border-radius:14px; }
+    .entity-trend-section{ margin:0 0 18px; padding:14px 16px 18px; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
     .entity-tabs{ margin-right:auto; }
     .brand-trend-section{ padding:0 18px 18px; }
 
     /* 영업 분석 재설계 — 추이 / 브랜드·담당자 현황 / 인사이트를 섹션 레이블로 구분하고,
        각 섹션은 두 칸(추이 2개, 순위 2개)으로 나란히 두어 여러 지표를 한 화면에서 비교할 수 있게 한다. */
-    .analysis-section-label{ font-size:11.5px; font-weight:700; color:var(--text-faint); letter-spacing:.04em; text-transform:uppercase; margin:22px 18px 8px; }
+    .analysis-section-label{ font-size:11.5px; font-weight:700; color:var(--text-faint); letter-spacing:.04em; text-transform:uppercase; margin:24px 0 8px; }
     .analysis-section-label:first-of-type{ margin-top:4px; }
-    .analysis-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:0 18px 18px; }
+    .analysis-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:0 0 18px; }
     @media (max-width:820px){ .analysis-two-col{ grid-template-columns:1fr; } }
-    .analysis-card{ background:var(--surface-2); border-radius:14px; padding:14px 16px 18px; margin:0 18px 18px; }
+    .analysis-card{ background:var(--surface); border:1px solid var(--border); box-shadow:none; border-radius:14px; padding:14px 16px 18px; margin:0 0 18px; }
     .analysis-two-col .analysis-card{ margin:0; }
     .analysis-card-title{ font-size:13.5px; font-weight:700; margin:0; }
     .title-group{ display:flex; align-items:center; gap:9px; min-width:0; }
-    .icon-badge{ width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; }
-    .icon-badge.blue{ background:var(--accent-soft); color:var(--accent); }
-    .icon-badge.gray{ background:var(--surface); color:var(--text-faint); border:1px solid var(--border); }
-    .icon-badge.green{ background:var(--ok-soft); color:var(--ok); }
+    /* 아이콘마다 다른 색 배경 박스를 두지 않고, 회색 아이콘 하나로 통일한다 —
+       금액처럼 특별히 강조할 지표만 파란색을 준다(화이트/블랙/블루 기조 유지). */
+    .icon-badge{ width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex:none; color:var(--text-faint); }
+    .icon-badge.blue{ color:var(--accent); }
+    .icon-badge.gray{ color:var(--text-faint); }
+    .icon-badge.green{ color:var(--text-faint); }
     .icon-badge svg{ display:block; }
 
     /* 브랜드/담당자별 수주 현황 — 가로 막대 순위 리스트 */
@@ -2817,13 +2892,13 @@
 
     /* 영업 인사이트 — 눈에 띄는 변화(급증/급감/신규 거래처/최고 실적)를 문장으로 자동 요약 */
     .analysis-insights-card{ padding:6px 16px; }
-    .insight-row{ display:flex; gap:12px; align-items:flex-start; padding:12px 2px; }
-    .insight-row + .insight-row{ border-top:1px solid var(--border); }
-    .insight-icon{ width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; font-size:13px; }
-    .insight-icon.up{ background:var(--ok-soft, rgba(18,128,94,.10)); }
-    .insight-icon.down{ background:var(--danger-soft, rgba(200,53,43,.08)); }
-    .insight-icon.new{ background:var(--accent-soft); }
-    .insight-icon.person{ background:var(--surface); border:1px solid var(--border); }
+    /* 인사이트마다 이모지 아이콘 배지를 붙이지 않고, 왼쪽 얇은 색선 하나로만 종류를 구분한다
+       (급증/신규=파랑, 급감=빨강, 담당자/거래처=회색 — 화이트/블랙/블루 기조 유지). */
+    .insight-row{ display:flex; gap:12px; align-items:flex-start; padding:12px 10px 12px 12px; border-left:2px solid var(--border); }
+    .insight-row + .insight-row{ border-top:1px solid var(--border); margin-top:0; }
+    .insight-row.insight-up, .insight-row.insight-new{ border-left-color:var(--accent); }
+    .insight-row.insight-down{ border-left-color:var(--danger); }
+    .insight-row.insight-person{ border-left-color:var(--border); }
     .insight-text{ font-size:13px; line-height:1.5; padding-top:2px; }
     .insight-text b{ font-weight:700; }
     .insight-empty{ font-size:12.5px; color:var(--text-faint); padding:12px 2px; }
@@ -2855,7 +2930,7 @@
     *{ box-sizing:border-box; }
     .mono{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric:tabular-nums; }
 
-    .page{ max-width:1100px; margin:0 auto; padding:24px 20px 80px; display:flex; flex-direction:column; gap:16px; }
+    .page{ max-width:1100px; margin:0 auto; padding:24px 24px 80px; display:flex; flex-direction:column; gap:16px; }
 
     .topbar{ display:flex; align-items:center; gap:12px; }
     .topbar .mark{ font-weight:700; font-size:12px; letter-spacing:.14em; color:var(--accent); text-transform:uppercase; }
@@ -2865,7 +2940,7 @@
     .of-main{ display:flex; flex-direction:column; gap:16px; min-width:0; }
     .of-summary{
       position:sticky; top:20px; background:var(--surface); border:1px solid var(--border); border-radius:14px;
-      box-shadow:var(--shadow); padding:18px 20px; display:flex; flex-direction:column; gap:2px;
+      box-shadow:none; padding:18px 20px; display:flex; flex-direction:column; gap:2px;
       min-width:0;
     }
     .of-summary h3{ margin:0 0 10px; font-size:13px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; }
@@ -2888,12 +2963,13 @@
       .of-summary-save, .of-summary-cancel{ display:none; }
     }
 
-    .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
+    .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:none; padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
     .card h2{ margin:0; font-size:13px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; }
     .card-head{ display:flex; align-items:center; gap:10px; margin-bottom:2px; }
-    .icon-badge{ width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; }
-    .icon-badge.blue{ background:var(--accent-soft); color:var(--accent); }
-    .icon-badge.gray{ background:var(--surface); color:var(--text-faint); border:1px solid var(--border); }
+    /* 섹션마다 다른 색 아이콘 박스를 두지 않고, 회색 아이콘 하나로 통일한다. */
+    .icon-badge{ width:18px; height:18px; display:flex; align-items:center; justify-content:center; flex:none; color:var(--text-faint); }
+    .icon-badge.blue{ color:var(--accent); }
+    .icon-badge.gray{ color:var(--text-faint); }
     .icon-badge svg{ display:block; }
 
     /* 뷰포트 폭 기준 미디어쿼리로 2단/1단을 나눴었는데, 실제 기기/아티팩트 미리보기 환경에서
@@ -2990,9 +3066,9 @@
     }
     .chip.active[data-v="일반"]{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
     .chip.active[data-v="긴급"]{ background:var(--urgent-soft); border-color:var(--urgent); color:var(--urgent); }
-    /* 금속은 파란색(다른 항목들과 같은 accent)이 아니라, 일정표에서 금속 자재를 표시할 때 쓰는
-       것과 같은 금색 계열로 눈에 띄게 구분한다. */
-    .chip.active[data-v="금속"]{ background:rgba(244,196,48,.18); border-color:#f4c430; color:#8a6d00; }
+    /* 금속은 노란색이 아니라, 일정표에서 금속 자재를 표시할 때 쓰는 것과 같은 회색 계열로
+       눈에 띄게 구분한다. */
+    .chip.active[data-v="금속"]{ background:rgba(75,85,99,.14); border-color:#4b5563; color:#4b5563; }
     .chip-group.single{ justify-content:flex-start; }
     .chip-group.single .chip{ flex:0 0 auto; min-width:120px; padding:9px 24px; }
 
@@ -3058,8 +3134,9 @@
     }
     .daytab.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
 
-    .summary{ display:flex; gap:10px; padding:8px 16px 4px; }
-    .stat{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow); }
+    .summary{ display:flex; margin:8px 16px 4px; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+    .stat{ flex:1; background:var(--surface); border:none; border-left:1px solid var(--border); border-radius:0; padding:10px 12px; box-shadow:none; min-width:0; }
+    .stat:first-child{ border-left:none; }
     .stat .num{ font-size:20px; font-weight:700; line-height:1.1; }
     .stat .label{ font-size:11.5px; color:var(--text-faint); margin-top:2px; }
 
@@ -3076,7 +3153,7 @@
     .task{
       display:flex; align-items:center; gap:12px;
       background:var(--surface); border:1px solid var(--border); border-radius:14px;
-      padding:14px; box-shadow:var(--shadow); cursor:pointer; user-select:none; transition:background .15s ease;
+      padding:14px; box-shadow:none; cursor:pointer; user-select:none; transition:background .15s ease;
     }
     .task:active{ background:var(--surface-2); }
     .task.done{ background:var(--done-bg); border-color:var(--done-bg); }
@@ -3110,8 +3187,9 @@
     :host{ display:block; background:var(--bg); color:var(--text); font-family:'IBM Plex Sans KR','Pretendard','Malgun Gothic',sans-serif; }
     *{ box-sizing:border-box; }
     .mono{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric:tabular-nums; }
+    .col-num{ width:44px; text-align:center; color:var(--text-faint); font-size:12.5px; font-weight:600; }
 
-    .page{ max-width:1180px; margin:0 auto; padding:24px 24px 60px; display:flex; flex-direction:column; gap:18px; }
+    .page{ max-width:1440px; margin:0 auto; padding:24px 24px 60px; display:flex; flex-direction:column; gap:16px; }
 
     .topbar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
     .brand{ display:flex; align-items:baseline; gap:12px; }
@@ -3119,20 +3197,26 @@
     .brand h1{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; }
     .brand .sub{ font-size:12.5px; color:var(--text-faint); }
 
-    .section-tabs{ display:flex; gap:8px; }
+    /* 탭(내역/분석) 바 오른쪽에 분석 전용 기간 탭(월별/분기별/연도별)을 같은 줄에 둔다 —
+       "영업 분석"/"매출 분석"이라는 제목 글씨가 탭 이름과 중복돼서 없앤 대신, 이 줄 하나로
+       탭 전환과 기간 선택을 모두 처리해서 화면 상단을 한 줄 더 줄인다. */
+    .section-tabs-row{ display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px 16px; border-bottom:1px solid var(--border); }
+    .section-tabs-row .tabs{ margin-bottom:8px; }
+    .section-tabs-row .tabs[hidden]{ display:none; }
+    .section-tabs{ display:flex; gap:0; }
     .section-tab{
-      padding:9px 20px; border-radius:10px; border:1px solid var(--border); background:var(--surface);
-      color:var(--text-muted); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+      padding:10px 4px; margin-right:22px; border-radius:0; border:none; border-bottom:2px solid transparent;
+      background:none; color:var(--text-muted); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
     }
-    .section-tab.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+    .section-tab.active{ color:var(--text); font-weight:700; border-bottom-color:var(--accent); }
     .section-panel{ display:flex; flex-direction:column; gap:18px; }
     .section-panel[hidden]{ display:none; }
 
     .upload-wrap{ display:flex; align-items:center; margin-left:auto; }
     .upload-btn{
       display:inline-flex; align-items:center; gap:6px;
-      padding:7px 13px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2);
-      color:var(--text); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+      padding:7px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+      color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
     }
     .upload-btn:hover{ background:var(--surface-3); }
     .upload-status{ font-size:11.5px; color:var(--text-faint); }
@@ -3140,14 +3224,16 @@
 
     .export-btn{
       display:inline-flex; align-items:center; gap:6px;
-      padding:7px 13px; border-radius:9px; border:1px solid var(--accent); background:var(--accent-soft);
-      color:var(--accent); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+      padding:7px 16px; border-radius:8px; border:1px solid var(--accent); background:var(--accent);
+      color:#fff; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
     }
-    .export-btn:hover{ filter:brightness(0.97); }
+    .export-btn:hover{ filter:brightness(1.06); }
 
-    .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-    @media (max-width:720px){ .stat-row{ grid-template-columns:repeat(2,1fr); } }
-    .stat{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); min-width:0; }
+    /* 4개 카드를 각각 테두리로 감싸지 않고, 하나의 플랫한 띠 안에서 세로 구분선으로만 나눈다. */
+    .stat-row{ display:flex; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+    @media (max-width:720px){ .stat-row{ flex-wrap:wrap; } .stat{ width:50%; } }
+    .stat{ flex:1; display:flex; flex-direction:column; background:var(--surface); border:none; border-left:1px solid var(--border); border-radius:0; padding:16px 20px; box-shadow:none; min-width:0; }
+    .stat:first-child{ border-left:none; }
     .stat .label{ font-size:12px; color:var(--text-faint); word-break:keep-all; overflow-wrap:break-word; }
     .stat .num{ font-size:22px; font-weight:700; margin-top:4px; white-space:nowrap; }
     .stat .num.empty-val{ font-size:14px; font-weight:600; color:var(--text-faint); white-space:normal; }
@@ -3157,29 +3243,25 @@
     @media (max-width:420px){ .stat{ padding:12px 10px; } .stat .num{ font-size:15px; } }
     .stat .num.info{ color:var(--accent); }
     .stat-top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-    .stat-compare{ display:flex; flex-direction:column; gap:2px; margin-top:7px; }
+    .stat-compare{ display:flex; flex-direction:column; gap:2px; margin-top:auto; padding-top:7px; }
     .stat-compare .cmp-item{ font-size:10.5px; color:var(--text-faint); display:flex; align-items:center; gap:4px; white-space:nowrap; }
-    .stat-note{ font-size:10.5px; color:var(--text-faint); margin-top:7px; }
+    .stat-note{ font-size:10.5px; color:var(--text-faint); margin-top:auto; padding-top:7px; }
     .delta{ font-weight:700; }
     .delta.up{ color:var(--ok); }
     .delta.down{ color:var(--danger); }
     .delta.flat{ color:var(--text-faint); font-weight:600; }
     .delta.new{ color:var(--accent); }
 
-    .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); }
+    .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:none; }
     .panel-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
     .panel-head h2{ margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
-    .admin-tag{
-      font-size:10.5px; font-weight:700; color:var(--accent); background:var(--accent-soft);
-      border-radius:6px; padding:2px 8px; letter-spacing:.02em;
-    }
 
     .revenue-toolbar{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; width:100%; min-width:0; }
     .unpaid-toggle{
-      padding:7px 16px; border-radius:8px; border:1px solid var(--danger); background:var(--danger-soft);
-      color:var(--danger); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;
+      padding:7px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+      color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;
     }
-    .unpaid-toggle.active{ background:var(--danger); border-color:var(--danger); color:#fff; }
+    .unpaid-toggle.active{ background:var(--text); border-color:var(--text); color:#fff; }
     .tabs{ display:flex; gap:6px; overflow-x:auto; max-width:100%; min-width:0; -webkit-overflow-scrolling:touch; }
     .tab{ flex:none; white-space:nowrap; padding:7px 13px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-muted); font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
     .tab.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
@@ -3231,7 +3313,7 @@
       font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:20px; cursor:pointer; font-family:inherit;
       display:inline-flex; align-items:center; gap:6px;
     }
-    .pay-cell-btn.full{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+    .pay-cell-btn.full{ background:var(--text); border-color:var(--text); color:#fff; }
     .pay-cell-btn.none{ background:var(--surface); color:var(--text-faint); }
     .pay-cell-btn.partial{ background:var(--surface-2); border-color:var(--border); color:var(--text); padding:5px 10px 5px 8px; }
     .pay-cell-btn.masked{ border:1px solid var(--border); background:var(--surface); color:var(--text-faint); padding:4px 10px; border-radius:20px; letter-spacing:.06em; cursor:default; }
@@ -3324,16 +3406,24 @@
     .foot{ padding:10px 18px; font-size:11.5px; color:var(--text-faint); border-top:1px solid var(--border); }
     .footnote{ font-size:11.5px; color:var(--text-faint); text-align:center; }
 
-    tr.group-head td{ background:var(--surface-2); font-weight:700; font-size:12.5px; color:var(--text-muted); padding:9px 18px; }
-    tr.group-head td.amount{ color:var(--text); }
+    tr.group-head td{
+      background:var(--surface-2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+      font-weight:700; font-size:12.5px; color:var(--text-muted); padding:10px 18px;
+    }
+    tr.group-head td.amount{ color:var(--text); font-size:13px; }
     tr.group-head:hover td{ background:var(--surface-3); }
     tr.group-head .group-caret{ display:inline-block; width:12px; color:var(--text-faint); }
+    /* 지금 펼쳐서 보고 있는 달만 연한 파란 틴트로 강조 — 접힌 달들은 회색 그대로 둬서
+       "지금 여기를 보고 있다"는 게 스크롤 중에도 한눈에 들어오게 한다. */
+    tr.group-head.expanded td{ background:var(--accent-soft); border-bottom-color:var(--accent-soft); }
+    tr.group-head.expanded td.amount{ color:var(--accent); }
+    tr.group-head.expanded:hover td{ background:var(--accent-soft); filter:brightness(0.97); }
 
     tr.grand-total td{
-      background:var(--surface-2); font-weight:700; font-size:13px; color:var(--text);
-      padding:12px 18px; border-top:2px solid var(--border); border-bottom:none;
+      background:var(--surface-3); font-weight:700; font-size:13.5px; color:var(--text);
+      padding:13px 18px; border-top:none; border-bottom:none;
     }
-    tr.grand-total td.amount{ color:var(--accent); font-size:14px; }
+    tr.grand-total td.amount{ color:var(--accent); font-size:15px; }
 
     .final-cell-wrap{ display:flex; align-items:center; justify-content:flex-end; gap:6px; width:100%; }
     .final-amount-value{ font-weight:700; }
@@ -3380,7 +3470,7 @@
     .hover-capture{ cursor:crosshair; }
     svg{ touch-action:pan-y; }
 
-    .entity-trend-section{ margin:0 18px 18px; padding:14px 16px 18px; background:var(--surface-2); border-radius:14px; }
+    .entity-trend-section{ margin:0 0 18px; padding:14px 16px 18px; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
     .entity-tabs{ margin-right:auto; }
     .brand-trend-section{ padding:0 18px 18px; }
     .brand-trend-table{ min-width:420px; }
@@ -3390,19 +3480,20 @@
 
     /* 매출 분석 재설계 — 추이 / 브랜드·발주처 현황 / 인사이트를 섹션 레이블로 구분하고,
        각 섹션은 두 칸(추이 2개, 순위 2개)으로 나란히 두어 여러 지표를 한 화면에서 비교할 수 있게 한다. */
-    .analysis-section-label{ font-size:11.5px; font-weight:700; color:var(--text-faint); letter-spacing:.04em; text-transform:uppercase; margin:22px 18px 8px; }
+    .analysis-section-label{ font-size:11.5px; font-weight:700; color:var(--text-faint); letter-spacing:.04em; text-transform:uppercase; margin:24px 0 8px; }
     .analysis-section-label:first-of-type{ margin-top:4px; }
-    .analysis-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:0 18px 18px; }
+    .analysis-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:0 0 18px; }
     @media (max-width:820px){ .analysis-two-col{ grid-template-columns:1fr; } }
-    .analysis-card{ background:var(--surface-2); border-radius:14px; padding:14px 16px 18px; margin:0 18px 18px; }
+    .analysis-card{ background:var(--surface); border:1px solid var(--border); box-shadow:none; border-radius:14px; padding:14px 16px 18px; margin:0 0 18px; }
     .analysis-two-col .analysis-card{ margin:0; }
     .analysis-card-title{ font-size:13.5px; font-weight:700; margin:0; }
     .title-group{ display:flex; align-items:center; gap:9px; min-width:0; }
-    .icon-badge{ width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; }
-    .icon-badge.blue{ background:var(--accent-soft); color:var(--accent); }
-    .icon-badge.gray{ background:var(--surface); color:var(--text-faint); border:1px solid var(--border); }
-    .icon-badge.green{ background:var(--ok-soft); color:var(--ok); }
-    .icon-badge.red{ background:var(--danger-soft); color:var(--danger); }
+    /* 아이콘마다 색 배경 박스를 두지 않고 회색 아이콘으로 통일 — 위험(빨강)만 예외로 남긴다. */
+    .icon-badge{ width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex:none; color:var(--text-faint); }
+    .icon-badge.blue{ color:var(--accent); }
+    .icon-badge.gray{ color:var(--text-faint); }
+    .icon-badge.green{ color:var(--text-faint); }
+    .icon-badge.red{ color:var(--danger); }
     .icon-badge svg{ display:block; }
 
     /* 브랜드/발주처별 매출 현황 — 가로 막대 순위 리스트 */
@@ -3419,13 +3510,13 @@
 
     /* 매출 인사이트 — 눈에 띄는 변화(급증/급감/신규 거래처/최고 실적)를 문장으로 자동 요약 */
     .analysis-insights-card{ padding:6px 16px; }
-    .insight-row{ display:flex; gap:12px; align-items:flex-start; padding:12px 2px; }
-    .insight-row + .insight-row{ border-top:1px solid var(--border); }
-    .insight-icon{ width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; font-size:13px; }
-    .insight-icon.up{ background:var(--ok-soft, rgba(18,128,94,.10)); }
-    .insight-icon.down{ background:var(--danger-soft, rgba(200,53,43,.08)); }
-    .insight-icon.new{ background:var(--accent-soft); }
-    .insight-icon.person{ background:var(--surface); border:1px solid var(--border); }
+    /* 인사이트마다 이모지 아이콘 배지를 붙이지 않고, 왼쪽 얇은 색선 하나로만 종류를 구분한다
+       (급증/신규=파랑, 급감=빨강, 담당자/거래처=회색 — 화이트/블랙/블루 기조 유지). */
+    .insight-row{ display:flex; gap:12px; align-items:flex-start; padding:12px 10px 12px 12px; border-left:2px solid var(--border); }
+    .insight-row + .insight-row{ border-top:1px solid var(--border); margin-top:0; }
+    .insight-row.insight-up, .insight-row.insight-new{ border-left-color:var(--accent); }
+    .insight-row.insight-down{ border-left-color:var(--danger); }
+    .insight-row.insight-person{ border-left-color:var(--border); }
     .insight-text{ font-size:13px; line-height:1.5; padding-top:2px; }
     .insight-text b{ font-weight:700; }
     .insight-empty{ font-size:12.5px; color:var(--text-faint); padding:12px 2px; }
@@ -3504,11 +3595,11 @@
 
     .toolbar{ display:flex; gap:10px; flex-wrap:wrap; }
     .search{
-      flex:1; min-width:160px; padding:10px 14px; border-radius:10px; border:1px solid var(--border);
-      background:var(--surface); font-size:13px; font-family:inherit; color:var(--text);
+      flex:1; min-width:160px; padding:10px 14px; border-radius:8px; border:1px solid var(--border);
+      background:var(--surface); font-size:13.5px; font-family:inherit; color:var(--text);
     }
     .add-btn{
-      background:var(--accent); color:#fff; border:none; border-radius:10px;
+      background:var(--accent); color:#fff; border:none; border-radius:8px;
       padding:10px 18px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;
     }
 
@@ -3714,7 +3805,7 @@
       const now = new Date();
       root.getElementById('clockDate').textContent = `${now.getMonth()+1}월 ${now.getDate()}일`;
       // 현장(TV) 모드는 가운데 헤더를 없앴으므로, 왼쪽 위 날짜에 요일까지 함께 보여준다.
-      root.getElementById('tvDate').textContent = `${now.getMonth()+1}월 ${now.getDate()}일 (${CLOCK_WEEKDAYS[now.getDay()]})`;
+      root.getElementById('tvDate').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${CLOCK_WEEKDAYS[now.getDay()]})`;
       root.getElementById('clockTime').textContent =
         `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     }
@@ -3786,7 +3877,7 @@
 
     // brand: 브랜드 코드만 표시 · store: 점포명 · client: 발주처(브랜드 마스터 참고해서 "코드 이름" 형식으로 표시)
     const rawEvents = [
-      { offset:-4, time:'09:00', brand:'PB', store:'이수점', client:'PB 파리바게뜨', task:'제과 쇼케이스', material:'금속', category:[], qty:8, op:'김선우', solo:false, done:true },
+      { offset:-4, time:'09:00', brand:'PB', store:'이수점', client:'파리바게뜨', task:'제과 쇼케이스', material:'금속', category:[], qty:8, op:'김선우', solo:false, done:true },
       { offset:-3, time:'11:00', brand:'K2', store:'브레드가든 목동점', client:'우리가디자인', task:'진열대 리뉴얼', material:'목재', category:[], qty:20, op:'이재황', solo:false, done:true },
       { offset:-1, time:'14:00', brand:'BK', store:'하늘제과 판교점', client:'삼립', task:'진열 선반', material:'목재', category:[], qty:'단납', op:'박성중', solo:true, done:false },
       { offset:0, time:'10:00', brand:'ND', store:'미도인베이커리 본점', client:'키예노', task:'비말차단 진열대', material:'금속', category:[], qty:5, op:'이현재', solo:true, done:false },
@@ -3795,7 +3886,7 @@
       { offset:2, time:'09:30', brand:'KK', store:'라뜰리에드빵 강남점', client:'공간디자인', task:'우드프레임', material:'목재', category:['공간디자인'], qty:10, op:'이재황', solo:false, done:false },
       { offset:4, time:'13:00', brand:'K2', store:'브레드팜 송파점', client:'우리가디자인', task:'진열대 3type', material:'목재', category:[], qty:20, op:'김선우', solo:false, done:false },
       { offset:6, time:'11:00', brand:'K2', store:'브레드팜 강남점', client:'우리가디자인', task:'진열대 3type', material:'목재', category:[], qty:200, op:'이현재', solo:false, done:false },
-      { offset:9, time:'10:00', brand:'PB', store:'대전역점', client:'PB 파리바게뜨', task:'대형 쇼케이스 세트', material:'금속', category:[], qty:100, op:'박성중', solo:false, done:false },
+      { offset:9, time:'10:00', brand:'PB', store:'대전역점', client:'파리바게뜨', task:'대형 쇼케이스 세트', material:'금속', category:[], qty:100, op:'박성중', solo:false, done:false },
       { offset:13, time:'14:00', brand:'BK', store:'하늘제과 분당점', client:'삼립', task:'진열 선반', material:'목재', category:[], qty:'단납', op:'박성중', solo:true, done:false },
       { offset:18, time:'10:00', brand:'CG', store:'카페드마르쉐 수원점', client:'디자인에너지', task:'냉장 쇼케이스', material:'금속', category:[], qty:300, op:'김선우', solo:false, done:false },
     ];
@@ -4122,8 +4213,16 @@
                 // 수주 등록에서 만들어진 납품 일정이면 원본 데이터(ORDER_TASKS)에서도 완전히 지워서,
                 // 다른 화면이나 다시 들어왔을 때 되살아나지 않게 한다.
                 if (ev.__orderTaskRef) {
-                  const idx = ORDER_TASKS.indexOf(ev.__orderTaskRef);
+                  const t = ev.__orderTaskRef;
+                  const idx = ORDER_TASKS.indexOf(t);
                   if (idx >= 0) ORDER_TASKS.splice(idx, 1);
+                  // 남은 납품 일정 중 가장 이른 날짜로 수주 건의 납품일을 다시 맞추고, 매출 관리 날짜도 함께 갱신한다.
+                  const linkedOrder = ORDERS.find(o => o.id === t.orderId);
+                  if (linkedOrder) {
+                    const taskDates = ORDER_TASKS.filter(x => x.orderId === linkedOrder.id).map(x => x.date).filter(Boolean).sort();
+                    linkedOrder.next = taskDates.length ? taskDates[0] : '—';
+                    syncRevenueFromOrder(linkedOrder);
+                  }
                 }
                 pendingDeleteId = null;
                 editingEventId = null;
@@ -4170,6 +4269,14 @@
                 t.material = ev.material;
                 t.qty = ev.qty;
                 t.op = ev.op;
+                // 이 납품 일정이 속한 수주 건의 납품일(영업 관리 표의 "납품일", 매출 관리의 매출 날짜
+                // 기준)도 같이 맞춰준다 — 한 건에 납품 일정이 여러 개면 그중 가장 이른 날짜로 잡는다.
+                const linkedOrder = ORDERS.find(o => o.id === t.orderId);
+                if (linkedOrder) {
+                  const taskDates = ORDER_TASKS.filter(x => x.orderId === linkedOrder.id).map(x => x.date).filter(Boolean).sort();
+                  linkedOrder.next = taskDates.length ? taskDates[0] : '—';
+                  syncRevenueFromOrder(linkedOrder);
+                }
               }
               editingEventId = null;
               renderCalendar();
@@ -4187,19 +4294,12 @@
                 <span class="assign">${ev.category.length ? ev.category.join(' · ') + ' · ' : ''}담당 ${ev.op}</span>
                 <span>
                   <button type="button" class="pill edit">수정</button>
-                  <button type="button" class="pill toggle ${ev.done ? 'done' : 'pending'}">${statusText(ev)}</button>
                 </span>
               </div>
             `;
             card.querySelector('.edit').addEventListener('click', () => {
               editingEventId = ev.id;
               openDay(date, dayEvents, dayCustom);
-            });
-            card.querySelector('.toggle').addEventListener('click', () => {
-              ev.done = !ev.done;
-              if (ev.__orderTaskRef) ev.__orderTaskRef.done = ev.done;
-              openDay(date, dayEvents, dayCustom);
-              renderCalendar();
             });
           }
           modalBody.appendChild(card);
@@ -4272,6 +4372,7 @@
     const orders = isStaffSession ? ORDERS.filter(o => o.rep === currentRep) : ORDERS;
     const REP_OPTIONS = ['이현재', '박성중', '이재황', '김선우'];
     let editingId = null;
+    let pendingDeleteId = null;
 
     let role = appRole === 'owner' ? 'owner' : 'staff';
     let query = '';
@@ -4304,6 +4405,11 @@
       const sec = btn.dataset.sec;
       [...sectionTabsEl.querySelectorAll('.section-tab')].forEach(b => b.classList.toggle('active', b === btn));
       [...root.querySelectorAll('.section-panel')].forEach(p => { p.hidden = p.dataset.sec !== sec; });
+      // 영업 분석 탭에 있을 때만 월별/분기별/연도별 기간 탭을 탭 바 오른쪽에 보여준다
+      // — "영업 분석" 제목 글씨가 탭 이름과 중복돼서 없앤 대신, 이 탭이 분석 전용 컨트롤임을
+      // 탭이 보이고 안 보이는 것으로 알 수 있게 한다.
+      const periodTabsEl = root.getElementById('analysisPeriodTabs');
+      if (periodTabsEl) periodTabsEl.hidden = sec !== 'analysis';
     });
 
     function fmtWon(n){
@@ -4317,6 +4423,22 @@
     function monthOf(o){ return o.orderDate ? o.orderDate.slice(0,7) : ''; }
     function monthOfLabel(key){ const [y,m] = key.split('-'); return `${y}년 ${Number(m)}월`; }
     // 화면에 짧게 보여줄 때 쓰는 압축 날짜 표기 — "2025-08-15" -> "25.08.15" (여러 해 데이터가 섞여도 연도가 바로 보이게).
+    // 수주 등록에서 납품 일정을 여러 개(예: 1차/2차 납품) 넣은 건은 ORDER_TASKS에 그 건의 orderId로
+    // 여러 행이 남아있다 — 납품일 칸에는 그중 가장 이른 날짜와 함께 "외 N건"을 표시해서 더 있다는 걸 알려준다.
+    function orderDeliveryDates(o){
+      return ORDER_TASKS.filter(t => t.orderId === o.id).map(t => t.date).filter(Boolean).sort();
+    }
+    function deliveryDateCellHtml(o){
+      const dates = orderDeliveryDates(o);
+      if (dates.length <= 1) return dispDate(o.next);
+      const extra = dates.length - 1;
+      // title 속성(브라우저 기본 툴팁)은 아티팩트 미리보기 같은 환경에서 안 뜨는 경우가 있어서,
+      // 직접 그려주는 툴팁으로 바꿔 호버하면 항상 전체 납품일 목록이 보이게 한다.
+      return `${dispDate(dates[0])} <span class="date-more-wrap">
+        <span class="date-more">외 ${extra}건</span>
+        <span class="date-more-tooltip">${dates.map(dispDate).join(', ')}</span>
+      </span>`;
+    }
     function dispDate(iso){
       if (!iso || iso === '—') return iso || '-';
       const parts = iso.split('-');
@@ -4390,6 +4512,22 @@
           <div class="name">${escapeHtml(o.store)} ${o.urgent ? '<span class="urgent-tag">긴급</span>' : ''}</div>
           <div class="brand">${escapeHtml(brandLabel(o.brand))} · ${escapeHtml(o.client)}</div>
         </td>`;
+      if (editingId === o.id && pendingDeleteId === o.id) {
+        // 삭제 확인 중에는 편집용 입력칸들을 잠깐 감추고, 이 건을 지우면 매출도 함께 지워진다는
+        // 안내와 취소/삭제 버튼만 보여준다 — 입력칸이 늘어놓는 폭 때문에 다시 좌우 스크롤이
+        // 생기지 않도록, 확인 중에는 아예 좁은 안내 문구로 대체한다.
+        return `
+          <tr class="editing delete-confirm-row">
+            <td class="mono col-num">${i + 1}</td>
+            ${nameCell}
+            <td colspan="7" class="delete-confirm-text">이 건을 삭제하면 매출 내역도 함께 삭제됩니다. 정말 삭제할까요?</td>
+            <td class="col-manage">
+              <button type="button" class="row-btn delete-cancel" data-id="${o.id}">취소</button>
+              <button type="button" class="row-btn delete-ok" data-id="${o.id}">삭제</button>
+            </td>
+          </tr>
+        `;
+      }
       if (editingId === o.id) {
         return `
           <tr class="editing">
@@ -4399,13 +4537,16 @@
             <td><input class="edit-orderdate mono" type="date" value="${isValidIsoDate(o.orderDate) ? o.orderDate : ''}"></td>
             <td><input class="edit-confirmdate mono" type="date" value="${isValidIsoDate(o.confirmDate) ? o.confirmDate : ''}"></td>
             <td><input class="edit-next mono" type="date" value="${isValidIsoDate(o.next) ? o.next : ''}"></td>
-            <td class="amount" style="text-align:right">${fmtWonMasked(o.amount)}</td>
+            <td style="text-align:right">${canEditFinalAmount(o) && canSeeAmount()
+              ? `<input class="edit-amount mono" type="text" inputmode="numeric" value="${o.amount != null ? o.amount.toLocaleString('ko-KR') : ''}" style="text-align:right" placeholder="견적금액 입력">`
+              : fmtWonMasked(o.amount)}</td>
             <td style="text-align:right">${canEditFinalAmount(o)
               ? `<input class="edit-finalamount mono" type="text" inputmode="numeric" value="${o.finalAmount != null ? o.finalAmount.toLocaleString('ko-KR') : ''}" style="text-align:right" placeholder="확정 시 입력">`
               : renderFinalAmount(o.finalAmount)}</td>
             <td class="center">${renderPaymentCell(o)}</td>
             <td class="col-manage">
               <button type="button" class="row-btn save-row" data-id="${o.id}">저장</button>
+              <button type="button" class="row-btn delete-row" data-id="${o.id}">삭제</button>
               <button type="button" class="row-btn cancel-row" data-id="${o.id}">취소</button>
             </td>
           </tr>
@@ -4418,7 +4559,7 @@
           <td>${o.rep}</td>
           <td class="mono">${dispDate(o.orderDate)}</td>
           <td class="mono">${dispDate(o.confirmDate) || '-'}</td>
-          <td class="mono">${dispDate(o.next)}</td>
+          <td class="mono">${deliveryDateCellHtml(o)}</td>
           <td class="amount" style="text-align:right">${fmtWonMasked(o.amount)}</td>
           <td style="text-align:right">${renderFinalAmount(o.finalAmount)}</td>
           <td class="center">${renderPaymentCell(o)}</td>
@@ -4453,7 +4594,7 @@
           const groupFinalTotal = rows.reduce((s,o) => s + (o.finalAmount || 0), 0);
           const isExpanded = expandedGroups.has(key);
           html.push(`
-            <tr class="group-head" data-gkey="${escapeHtml(key)}" style="cursor:pointer">
+            <tr class="group-head${isExpanded ? ' expanded' : ''}" data-gkey="${escapeHtml(key)}" style="cursor:pointer">
               <td colspan="6"><span class="group-caret">${isExpanded ? '▾' : '▸'}</span> ${listGroupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${rows.length}건</span></td>
               <td class="amount">${fmtWonMasked(groupQuoteTotal)}</td>
               <td class="amount">${fmtWonMasked(groupFinalTotal)}</td>
@@ -4485,10 +4626,39 @@
         });
       });
       tbody.querySelectorAll('.edit-row').forEach(btn => {
-        btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = Number(btn.dataset.id); render(); });
+        btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = Number(btn.dataset.id); pendingDeleteId = null; render(); });
       });
       tbody.querySelectorAll('.cancel-row').forEach(btn => {
-        btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = null; render(); });
+        btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = null; pendingDeleteId = null; render(); });
+      });
+      tbody.querySelectorAll('.delete-row').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); pendingDeleteId = Number(btn.dataset.id); render(); });
+      });
+      tbody.querySelectorAll('.delete-cancel').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); pendingDeleteId = null; render(); });
+      });
+      tbody.querySelectorAll('.delete-ok').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.id);
+          // 수주 건을 지우면 연동된 매출 내역과, 일정표에 남아있는 이 건의 납품 일정도 함께 지워서
+          // 다른 화면에 유령처럼 남아있지 않게 한다.
+          const oi = ORDERS.findIndex(x => x.id === id);
+          if (oi >= 0) ORDERS.splice(oi, 1);
+          if (orders !== ORDERS) {
+            const oiLocal = orders.findIndex(x => x.id === id);
+            if (oiLocal >= 0) orders.splice(oiLocal, 1);
+          }
+          const ri = REVENUE_ALL.findIndex(r => r.linkedOrderId === id);
+          if (ri >= 0) REVENUE_ALL.splice(ri, 1);
+          for (let i = ORDER_TASKS.length - 1; i >= 0; i--) {
+            if (ORDER_TASKS[i].orderId === id) ORDER_TASKS.splice(i, 1);
+          }
+          pendingDeleteId = null;
+          editingId = null;
+          render();
+          if (window.refreshAllPages) window.refreshAllPages('domus-sales-page');
+        });
       });
       attachAmountFormatter(tbody.querySelector('.edit-amount'));
       attachAmountFormatter(tbody.querySelector('.edit-finalamount'));
@@ -4558,7 +4728,7 @@
         return `<button type="button" class="pay-cell-btn none" data-id="${o.id}">미입금</button>`;
       }
       if (paid >= total) {
-        return `<button type="button" class="pay-cell-btn full" data-id="${o.id}">✓ 입금완료</button>`;
+        return `<button type="button" class="pay-cell-btn full" data-id="${o.id}">입금완료</button>`;
       }
       return `
         <button type="button" class="pay-cell-btn partial" data-id="${o.id}" title="${fmtWon(paid)} / ${fmtWon(total)}">
@@ -4571,9 +4741,10 @@
     // ---- 입금 내역 모달 ----
     let payModalId = null;
     let editingPayIdx = null;
+    let pendingPayDeleteIdx = null;
     const payOverlay = root.getElementById('payOverlay');
-    function openPayModal(id){ payModalId = id; editingPayIdx = null; renderPayModal(); if (payOverlay) payOverlay.hidden = false; }
-    function closePayModal(){ payModalId = null; editingPayIdx = null; if (payOverlay) payOverlay.hidden = true; }
+    function openPayModal(id){ payModalId = id; editingPayIdx = null; pendingPayDeleteIdx = null; renderPayModal(); if (payOverlay) payOverlay.hidden = false; }
+    function closePayModal(){ payModalId = null; editingPayIdx = null; pendingPayDeleteIdx = null; if (payOverlay) payOverlay.hidden = true; }
     if (payOverlay) {
       payOverlay.addEventListener('click', (e) => { if (e.target === payOverlay) closePayModal(); });
     }
@@ -4625,6 +4796,17 @@
                 </div>
               `;
             }
+            if (idx === pendingPayDeleteIdx) {
+              return `
+                <div class="pay-item pay-item-delete-confirm">
+                  <span class="delete-confirm-text">이 입금 내역을 정말 삭제할까요?</span>
+                  <div class="pay-item-actions">
+                    <button type="button" class="pay-del-cancel" data-idx="${idx}">취소</button>
+                    <button type="button" class="pay-del-ok" data-idx="${idx}">삭제</button>
+                  </div>
+                </div>
+              `;
+            }
             return `
             <div class="pay-item">
               <div class="pay-item-date mono">${dispDate(p.date)}</div>
@@ -4650,9 +4832,23 @@
       `;
       listEl.querySelectorAll('.del-pay').forEach(btn => {
         btn.addEventListener('click', () => {
+          pendingPayDeleteIdx = Number(btn.dataset.idx);
+          editingPayIdx = null;
+          renderPayModal();
+        });
+      });
+      listEl.querySelectorAll('.pay-del-cancel').forEach(btn => {
+        btn.addEventListener('click', () => {
+          pendingPayDeleteIdx = null;
+          renderPayModal();
+        });
+      });
+      listEl.querySelectorAll('.pay-del-ok').forEach(btn => {
+        btn.addEventListener('click', () => {
           const idx = Number(btn.dataset.idx);
           o.payments.splice(idx, 1);
           o.paid = isFullyPaid(o);
+          pendingPayDeleteIdx = null;
           editingPayIdx = null;
           renderPayModal();
           render();
@@ -4893,8 +5089,7 @@
       const list = root.getElementById('analysisInsightsList');
       if (!insights.length) { list.innerHTML = `<div class="insight-empty">이번 기간에는 특별히 눈에 띄는 변화가 없습니다.</div>`; return; }
       list.innerHTML = insights.map(ins => `
-        <div class="insight-row">
-          <div class="insight-icon ${ins.cls}">${ins.icon}</div>
+        <div class="insight-row insight-${ins.cls}">
           <div class="insight-text">${ins.html}</div>
         </div>
       `).join('');
@@ -5779,6 +5974,20 @@
     const won = n => n.toLocaleString('ko-KR') + '원';
     const pad2 = n => String(n).padStart(2,'0');
     const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    // 영업 관리와 같은 압축 날짜 표기("2025-08-15" -> "25.08.15") — 두 화면을 나란히 비교하기 쉽게 맞춘다.
+    function dispDateRev(iso){
+      if (!iso || iso === '—') return '-';
+      const parts = iso.split('-');
+      if (parts.length !== 3) return iso;
+      const [y, m, d] = parts;
+      return `${y.slice(2)}.${m}.${d}`;
+    }
+    // 매출 건이 어느 수주에서 왔는지 찾아서, 영업 관리에서 보던 수주일·수주확정일도 여기서 바로
+    // 비교할 수 있게 한다. 연동 이전에 이미 있던 예시 매출 데이터는 연결된 수주가 없어 "-"로 남는다.
+    function linkedOrderOfRev(r){
+      if (r.linkedOrderId == null) return null;
+      return ORDERS.find(o => o.id === r.linkedOrderId) || null;
+    }
 
     const REP_LIST = ['이현재', '박성중', '이재황', '김선우'];
 
@@ -5822,6 +6031,11 @@
       const sec = btn.dataset.sec;
       [...sectionTabsEl.querySelectorAll('.section-tab')].forEach(b => b.classList.toggle('active', b === btn));
       [...root.querySelectorAll('.section-panel')].forEach(p => { p.hidden = p.dataset.sec !== sec; });
+      // 매출 분석 탭에 있을 때만 월별/분기별/연도별 기간 탭을 탭 바 오른쪽에 보여준다
+      // — "매출 분석" 제목 글씨가 탭 이름과 중복돼서 없앤 대신, 이 탭이 분석 전용 컨트롤임을
+      // 탭이 보이고 안 보이는 것으로 알 수 있게 한다.
+      const periodTabsEl = root.getElementById('revAnalysisPeriodTabs');
+      if (periodTabsEl) periodTabsEl.hidden = sec !== 'analysis';
     });
 
     let period = 'month';
@@ -5927,8 +6141,7 @@
       const list = root.getElementById('revInsightsList');
       if (!insights.length) { list.innerHTML = `<div class="insight-empty">이번 기간에는 특별히 눈에 띄는 변화가 없습니다.</div>`; return; }
       list.innerHTML = insights.map(ins => `
-        <div class="insight-row">
-          <div class="insight-icon ${ins.cls}">${ins.icon}</div>
+        <div class="insight-row insight-${ins.cls}">
           <div class="insight-text">${ins.html}</div>
         </div>
       `).join('');
@@ -6076,7 +6289,7 @@
       const paid = paidAmountRev(r);
       const pct = Math.max(0, Math.min(100, Math.round(paid / total * 100)));
       if (paid <= 0) return `<button type="button" class="pay-cell-btn none" data-id="${r.id}">미입금</button>`;
-      if (paid >= total) return `<button type="button" class="pay-cell-btn full" data-id="${r.id}">✓ 입금완료</button>`;
+      if (paid >= total) return `<button type="button" class="pay-cell-btn full" data-id="${r.id}">입금완료</button>`;
       return `
         <button type="button" class="pay-cell-btn partial" data-id="${r.id}" title="${won(paid)} / ${won(total)}">
           <span class="pay-track"><span class="pay-fill" style="width:${pct}%"></span></span>
@@ -6216,8 +6429,9 @@
 
       const tbody = root.getElementById('tbody');
       tbody.innerHTML = '';
+      let rowIdx = 0;
       if (!groupKeysSorted.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-faint); padding:24px;">해당 조건의 내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-faint); padding:24px;">해당 조건의 내역이 없습니다.</td></tr>';
       } else {
         groupKeysSorted.forEach(key => {
           const rows = groups.get(key).sort((a,b) => b.date.localeCompare(a.date));
@@ -6228,10 +6442,10 @@
           const isExpanded = expandedGroups.has(key);
 
           const headTr = document.createElement('tr');
-          headTr.className = 'group-head';
+          headTr.className = 'group-head' + (isExpanded ? ' expanded' : '');
           headTr.style.cursor = 'pointer';
           headTr.innerHTML = `
-            <td colspan="5"><span class="group-caret">${isExpanded ? '▾' : '▸'}</span> ${groupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${confirmedRows.length}건</span></td>
+            <td colspan="8"><span class="group-caret">${isExpanded ? '▾' : '▸'}</span> ${groupLabel(key)} <span style="font-weight:400; color:var(--text-faint)">· ${confirmedRows.length}건</span></td>
             <td class="amount">${won(groupQuoteTotal)}</td>
             <td class="amount">${won(groupFinalTotal)}</td>
             <td class="center"></td>
@@ -6248,12 +6462,17 @@
               if (!r.confirmed) tr.className = 'revenue-cancelled-row';
               const finalCell = renderFinalCell(r);
               const cancelledTag = r.confirmed ? '' : ' <span class="cancelled-tag" title="수주 확정이 취소된 건입니다. 입금 이력 확인용으로만 남아있고, 매출 통계에는 반영되지 않습니다.">(확정취소)</span>';
+              const linkedOrder = linkedOrderOfRev(r);
+              rowIdx++;
               tr.innerHTML = `
-                <td class="mono">${r.date}</td>
+                <td class="mono col-num">${rowIdx}</td>
                 <td>${escapeHtml(brandLabel(r.brand))}</td>
                 <td>${escapeHtml(r.client)}${cancelledTag}</td>
                 <td>${escapeHtml(r.store)}</td>
                 <td>${escapeHtml(r.rep || '-')}</td>
+                <td class="mono">${dispDateRev(linkedOrder && linkedOrder.orderDate)}</td>
+                <td class="mono">${dispDateRev(linkedOrder && linkedOrder.confirmDate)}</td>
+                <td class="mono">${dispDateRev(r.date)}</td>
                 <td class="amount">${won(r.quoteAmount)}</td>
                 ${finalCell}
                 <td class="center">${renderPaymentCellRev(r)}</td>
@@ -6267,7 +6486,7 @@
         const grandTr = document.createElement('tr');
         grandTr.className = 'grand-total';
         grandTr.innerHTML = `
-          <td colspan="5">합계 <span style="font-weight:400; color:var(--text-faint)">· ${confirmedList.length}건</span></td>
+          <td colspan="8">합계 <span style="font-weight:400; color:var(--text-faint)">· ${confirmedList.length}건</span></td>
           <td class="amount">${won(grandQuoteTotal)}</td>
           <td class="amount">${won(total)}</td>
           <td class="center"></td>
@@ -6536,8 +6755,11 @@
             (repFilterVal === '전체' || r.rep === repFilterVal) &&
             (!unpaidOnlyVal || (r.confirmed && !isFullyPaidRev(r)))
           );
-          const rows = [['날짜','브랜드','발주처','점포명','담당자','견적금액','확정금액','확인 여부','입금 여부']].concat(
-            list.map(r => [r.date, brandLabel(r.brand), r.client, r.store, r.rep || '-', r.quoteAmount, r.finalAmount, r.confirmed ? '확인됨' : '확인 대기', isFullyPaidRev(r) ? '입금완료' : (paidAmountRev(r) > 0 ? `입금 진행중(${paidAmountRev(r).toLocaleString('ko-KR')}원)` : '미입금')])
+          const rows = [['브랜드','발주처','점포명','담당자','수주일','수주확정일','매출일','견적금액','확정금액','확인 여부','입금 여부']].concat(
+            list.map(r => {
+              const linkedOrder = linkedOrderOfRev(r);
+              return [brandLabel(r.brand), r.client, r.store, r.rep || '-', (linkedOrder && linkedOrder.orderDate) || '-', (linkedOrder && linkedOrder.confirmDate) || '-', r.date, r.quoteAmount, r.finalAmount, r.confirmed ? '확인됨' : '확인 대기', isFullyPaidRev(r) ? '입금완료' : (paidAmountRev(r) > 0 ? `입금 진행중(${paidAmountRev(r).toLocaleString('ko-KR')}원)` : '미입금')];
+            })
           );
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), '매출내역');
