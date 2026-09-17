@@ -594,10 +594,10 @@
               <div class="field"><label>발주처 담당자</label><input id="f-clientcontact"></div>
               <div class="field"><label>전화번호</label><input id="f-clientphone" placeholder="010-0000-0000"></div>
               <div class="field"><label>인테리어업체</label><input id="f-interior"></div>
-              <div class="field"><label>현장소장</label><input></div>
-              <div class="field"><label>현장소장 전화번호</label><input placeholder="010-0000-0000"></div>
-              <div class="field"><label>점주/매니저</label><input></div>
-              <div class="field"><label>점주/매니저 전화번호</label><input placeholder="010-0000-0000"></div>
+              <div class="field"><label>현장소장</label><input id="f-sitemanager"></div>
+              <div class="field"><label>현장소장 전화번호</label><input id="f-sitemanagerphone" placeholder="010-0000-0000"></div>
+              <div class="field"><label>점주/매니저</label><input id="f-storemanager"></div>
+              <div class="field"><label>점주/매니저 전화번호</label><input id="f-storemanagerphone" placeholder="010-0000-0000"></div>
             </div>
           </div>
         </div>
@@ -1273,6 +1273,12 @@
 
   // 수주 등록 화면에서 등록한 "납품 일정" 항목들 — 일정표·오늘 할 일 화면이 여기서 실시간으로 읽어간다.
   const ORDER_TASKS = [];
+
+  // 일정표에서 날짜를 보다가 "이 날짜에 수주 등록" 버튼을 눌렀을 때, 수주 등록 화면으로
+  // 넘어가면서 첫 납품 날짜 칸에 그 날짜를 미리 채워주기 위한 값이다. 두 화면이 서로 다른
+  // 컴포넌트라 직접 값을 넘길 방법이 없어 모듈 스코프에 잠깐 담아뒀다가, 수주 등록 화면이
+  // 새로 그려질 때 한 번 읽고 바로 비운다(다음번엔 영향 없게).
+  let PENDING_ORDERFORM_DATE = null;
 
   // 일정표에서 등록하는 휴일/기타 사내 일정 — 페이지 스코프에 두면 다른 화면에서 저장할 때
   // refresh()가 불리면서 매번 초기 샘플로 리셋돼, 등록한 휴일이 얼마 못 가 사라져 보였다.
@@ -2371,6 +2377,9 @@
       border:1px solid var(--border); background:var(--surface); color:var(--text);
     }
     .ev-btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+    /* 날짜 상세 목록 맨 위에 두는 "이 날짜에 수주 등록" 버튼 — 목록의 다른 항목들과
+       헷갈리지 않도록 가로로 꽉 채우고 아래에 여백을 둬서 구분한다. */
+    .go-orderform-btn{ display:block; width:100%; padding:10px 14px; font-size:13px; margin-bottom:12px; }
     /* window.confirm() 팝업이 막힌 환경에서도 삭제 확인이 항상 동작하도록, 팝업 대신
        버튼 자리를 인라인 "정말 삭제할까요?" 확인 UI로 바꾼다. */
     .ev-btn-row.ev-delete-confirm{ align-items:center; }
@@ -2482,35 +2491,50 @@
     }
 
     /* 아이폰/갤럭시 기본 캘린더처럼 한 화면(스크롤 없이)에 7칸 x 6주 그리드가 화면 전체
-       높이를 꽉 채우며 들어오고, 칸 안 내용은 다 안 보여도 괜찮게(잘려도 됨) 하는 건
-       "실제 휴대폰(터치 화면 + 좁은 폭)"일 때만이다. 현장 TV(스틱PC)는 화면 폭이 좁게
-       인식될 수 있고, 노트북·모니터도 창을 좁게 줄일 수 있지만 이 두 경우는 절대 잘리면
-       안 되므로(자동 글씨 축소가 항상 적용돼야 함), pointer:coarse(터치)까지 같이 확인하고
+       높이를 꽉 채우며 들어오고, 칸 안 내용은 자동으로 글씨를 줄여서 최대한 다 보이게
+       하는 건 "실제 휴대폰(터치 화면 + 좁은 폭)"일 때만이다. 현장 TV(스틱PC)는 화면 폭이
+       좁게 인식될 수 있고, 노트북·모니터도 창을 좁게 줄일 수 있지만 이 두 경우는 이
+       모바일 전용 레이아웃이 적용되면 안 되므로, pointer:coarse(터치)까지 같이 확인하고
        TV 모드에서는 폭과 무관하게 이 블록 전체가 아예 적용되지 않게 제외한다. */
     @media (max-width: 900px) and (pointer: coarse){
+      /* 화면이 작은 휴대폰에서는 현장용(TV) 모드처럼 좌우/상하 여백과 카드 테두리를
+         없애서, 그만큼 확보된 공간을 달력 칸에 더 쓸 수 있게 한다(글씨 크기 자체는
+         바뀌지 않는다 — 위 allFit 로직이 정하는 --day-scale과는 별개). */
+      :host(:not(.mode-tv)) .board{ padding:0; gap:0; }
+      :host(:not(.mode-tv)) .topbar{ padding:10px 14px 6px; }
+      :host(:not(.mode-tv)) .panel{ border:none; border-radius:0; box-shadow:none; }
       :host(:not(.mode-tv)) .cal-grid{ grid-template-rows:repeat(6, 1fr); }
-      :host(:not(.mode-tv)) .day-cell{ overflow:hidden; padding:3px 3px; gap:1px; }
+      /* 현장(TV) 일정표처럼 칸 안 여백도 최소화해서, 글씨가 칸 테두리에 거의 붙게 한다
+         (TV 모드의 day-cell/ev-chip 여백 값 참고). */
+      :host(:not(.mode-tv)) .day-cell{ overflow:hidden; padding:2px; gap:1px; }
       :host(:not(.mode-tv)) .day-num{ width:18px; height:18px; font-size:12px; }
+      /* 휴일 라벨("추석연휴" 등)이 날짜 숫자·일정 글씨는 다 작아졌는데 혼자 11px 그대로라
+         유독 커 보였다 — 다른 칸 내용과 비슷한 크기로 줄인다. */
+      :host(:not(.mode-tv)) .holiday-label{ font-size:9px; }
       :host(:not(.mode-tv)) .day-events{ overflow:hidden; gap:1px; }
-      /* 갤럭시/아이폰 캘린더처럼, 이벤트 하나를 한 줄로 압축한다 — 뱃지(수량)와 점포명을
-         나란히 붙이고 글씨를 확 줄여서, 세로로 두 줄 쓰던 것보다 훨씬 많은 일정을 한
-         칸 안에서 미리보기로 보여준다. 그래도 안 들어가면 잘리는 건 그대로 두고,
-         날짜를 탭하면 전체 목록을 볼 수 있다. */
+      /* 갤럭시/아이폰 캘린더처럼, 뱃지(수량)와 점포명을 나란히 붙이고 글씨를 확 줄인다.
+         예전엔 한 줄로 자르고 안 들어가면 말줄임(...)으로 잘리게 뒀는데, "칸 안 내용이
+         다 보이게 해달라"는 요청에 따라 현장(TV) 모드처럼 줄바꿈을 허용해서 내용을
+         자르지 않고, 그래도 안 들어가면 위 allFit 로직이 --day-scale을 낮춰 글씨를
+         더 줄여서라도 전부 보여준다(말줄임은 더 이상 쓰지 않는다). 단, 글씨 크기를
+         고정값(9px)으로 박아두면 --day-scale을 아무리 낮춰도 실제 글씨는 안 줄어들어서
+         allFit이 효과가 없었다 — 아래처럼 day-scale에 맞춰 같이 줄어들게 해야 한다. */
       :host(:not(.mode-tv)) .ev-chip{
-        font-size:9px; overflow:hidden; flex-direction:row; align-items:center;
-        gap:1px; padding:1px 3px 1px 4px; border-radius:3px;
+        font-size:calc(var(--day-scale, 1) * 9px); flex-direction:row; align-items:flex-start;
+        gap:2px; padding:calc(var(--day-scale, 1) * 1px) 2px;
+        border-radius:3px;
       }
       :host(:not(.mode-tv)) .chip-row1{ flex:none; padding-top:0; }
       /* 박스 없이 색으로만 구분하니 모바일에서는 배지 자체가 안 보인다는 피드백을 반영해,
          작게라도 배경 있는 배지 모양을 유지한다(데스크탑과 같은 검정/회색 배지, 크기만 축소). */
       :host(:not(.mode-tv)) .chip-qty{
-        font-size:8px; font-weight:700; padding:1px 3px; border-radius:3px;
-        background:#000; color:#fff;
+        font-size:calc(var(--day-scale, 1) * 8px); font-weight:700; padding:1px 3px; border-radius:3px;
+        background:#000; color:#fff; flex:none; white-space:nowrap;
       }
       :host(:not(.mode-tv)) .ev-chip.metal .chip-qty{ background:rgba(75,85,99,.14); color:var(--metal-color); }
       :host(:not(.mode-tv)) .chip-row2{
-        flex:1; width:auto; min-width:0; font-size:9px; line-height:1.35;
-        white-space:nowrap; word-break:normal; overflow-wrap:normal; overflow:hidden; text-overflow:ellipsis;
+        flex:1; width:auto; min-width:0; font-size:calc(var(--day-scale, 1) * 9px); line-height:1.3;
+        white-space:normal; word-break:break-word; overflow-wrap:break-word;
       }
     }
   `;
@@ -2550,12 +2574,15 @@
       color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;
     }
     .unpaid-toggle.active{ background:var(--text); border-color:var(--text); color:#fff; }
+    /* 파란색(강조색)이면 엑셀 업로드 버튼(회색 아웃라인)과 나란히 있을 때 이게 더 중요한
+       동작처럼 보인다 — 업로드와 똑같이 무채색으로 바꾸되, 채워진 형태로 구분한다. */
+    /* 월별/분기별 탭 버튼과 같은 옅은 회색 바탕 스타일로 통일한다. */
     .export-btn{
       display:inline-flex; align-items:center; gap:6px;
-      padding:7px 16px; border-radius:8px; border:1px solid var(--accent); background:var(--accent);
-      color:#fff; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+      padding:7px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
+      color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
     }
-    .export-btn:hover{ filter:brightness(1.06); }
+    .export-btn:hover{ background:var(--surface-3); }
     .filter-group{ display:flex; flex-direction:column; gap:4px; min-width:0; }
     .filter-group label{ font-size:10.5px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.03em; }
     .filter-select{
@@ -2699,6 +2726,17 @@
     .cell-client .brand{ font-size:11.5px; color:var(--text-faint); }
 
     .urgent-tag{ font-size:10.5px; font-weight:700; color:var(--urgent); background:var(--urgent-soft); border-radius:5px; padding:1px 6px; margin-left:6px; }
+
+    /* 수주 등록의 "연락처 상세" 입력값을 볼 수 있게 하는 토글 버튼과 펼침 행. */
+    .contact-toggle{
+      display:block; margin-top:4px; padding:2px 0; border:none; background:none; cursor:pointer;
+      font-size:11px; font-weight:700; color:var(--accent); font-family:inherit;
+    }
+    tr.contact-detail-row td{ background:var(--surface-2); border-top:none; padding:10px 14px; }
+    .contact-detail{ display:flex; flex-wrap:wrap; gap:8px 24px; }
+    .contact-detail-item{ font-size:12px; display:flex; gap:6px; }
+    .contact-detail-item .k{ color:var(--text-faint); }
+    .contact-detail-item .v{ font-weight:600; color:var(--text); }
 
     .amount{ font-family:'IBM Plex Mono','IBM Plex Sans KR',monospace; font-variant-numeric:tabular-nums; font-weight:600; text-align:right; }
     .date-more-wrap{ position:relative; display:inline-block; }
@@ -2876,12 +2914,27 @@
     /* 4개 카드를 각각 테두리로 감싸지 않고, 하나의 플랫한 띠 안에서 세로 구분선으로만
        나눈다 — 박스가 많으면 산만해 보여서 더 단순하게 정리. */
     .stat-row{ display:flex; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
-    @media (max-width:720px){ .stat-row{ flex-wrap:wrap; } .stat{ width:50%; } }
     .stat{ flex:1; display:flex; flex-direction:column; background:var(--surface); border:none; border-left:1px solid var(--border); border-radius:0; padding:16px 20px; box-shadow:none; min-width:0; }
     .stat:first-child{ border-left:none; }
     .stat .label{ font-size:12px; color:var(--text-faint); word-break:keep-all; overflow-wrap:break-word; }
     .stat .num{ font-size:22px; font-weight:700; margin-top:4px; white-space:nowrap; }
     .stat .num.empty-val{ font-size:14px; font-weight:600; color:var(--text-faint); white-space:normal; }
+    /* .stat이 위에서 flex:1(=flex-basis:0%)로 정의돼 있어서, 모바일에서 그냥 width:50%만
+       주면 flex-basis가 우선 적용돼 무시되고 4개가 한 줄에 다 들어가 버린다(모바일에서
+       숫자가 잘려 보이던 실제 원인). flex 자체를 다시 지정해서 flex-basis를 50%로
+       덮어써야 실제로 2x2로 줄바꿈된다. */
+    /* 4칸이 2x2로 줄바꿈되면 위·아래 칸 사이엔 구분선이 없어서 경계가 잘 안 보인다는
+       피드백을 반영해, 아래쪽 두 칸(3·4번째)에 위쪽 테두리를 그어 가로선을 추가한다. */
+    @media (max-width:720px){
+      .stat-row{ flex-wrap:wrap; }
+      .stat{ flex:0 0 50%; width:50%; }
+      .stat:nth-child(n+3){ border-top:1px solid var(--border); }
+      /* :first-child 규칙은 전체 4칸 중 맨 처음(1번) 것만 border-left를 없애는데,
+         2x2로 줄바꿈되면 3번째 칸도 줄의 맨 왼쪽에 오게 된다. 이 칸은 여전히
+         border-left가 남아있어서 바깥 stat-row 테두리와 겹쳐 그 자리만 선이
+         두꺼워 보였다 — 3번째 칸도 왼쪽 테두리를 없앤다. */
+      .stat:nth-child(3){ border-left:none; }
+    }
     @media (max-width:420px){ .stat{ padding:12px 10px; } .stat .num{ font-size:15px; } }
     .stat-top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
     .stat-compare{ display:flex; flex-direction:column; gap:2px; margin-top:auto; padding-top:7px; }
@@ -3016,7 +3069,9 @@
     .of-summary-cancel{ width:100%; margin-top:8px; padding:9px 0; }
     @media (max-width:900px){
       .of-layout{ grid-template-columns:1fr; }
-      .of-summary{ position:static; order:-1; }
+      /* 예전엔 요약 카드를 맨 위(order:-1)로 올렸는데, "등록 요약은 맨 밑으로"라는
+         요청에 따라 폼 입력 칸들 다음, 맨 아래로 옮긴다. */
+      .of-summary{ position:static; order:1; }
       /* 모바일에서는 화면 하단 고정 저장바가 이미 저장/취소를 제공하므로,
          요약 카드 안의 버튼은 중복이라 숨긴다. */
       .of-summary-save, .of-summary-cancel{ display:none; }
@@ -3289,16 +3344,18 @@
     .upload-status{ font-size:11.5px; color:var(--text-faint); }
     .upload-status:not(:empty){ margin-left:8px; }
 
+    /* 파란색(강조색)이면 엑셀 업로드 버튼(회색 아웃라인)과 나란히 있을 때 이게 더 중요한
+       동작처럼 보인다 — 업로드와 똑같이 무채색으로 바꾸되, 채워진 형태로 구분한다. */
+    /* 월별/분기별 탭 버튼과 같은 옅은 회색 바탕 스타일로 통일한다. */
     .export-btn{
       display:inline-flex; align-items:center; gap:6px;
-      padding:7px 16px; border-radius:8px; border:1px solid var(--accent); background:var(--accent);
-      color:#fff; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+      padding:7px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
+      color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
     }
-    .export-btn:hover{ filter:brightness(1.06); }
+    .export-btn:hover{ background:var(--surface-3); }
 
     /* 4개 카드를 각각 테두리로 감싸지 않고, 하나의 플랫한 띠 안에서 세로 구분선으로만 나눈다. */
     .stat-row{ display:flex; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
-    @media (max-width:720px){ .stat-row{ flex-wrap:wrap; } .stat{ width:50%; } }
     .stat{ flex:1; display:flex; flex-direction:column; background:var(--surface); border:none; border-left:1px solid var(--border); border-radius:0; padding:16px 20px; box-shadow:none; min-width:0; }
     .stat:first-child{ border-left:none; }
     .stat .label{ font-size:12px; color:var(--text-faint); word-break:keep-all; overflow-wrap:break-word; }
@@ -3307,6 +3364,21 @@
     .stat .num.warn{ color:var(--warn); }
     .stat .num.ok{ color:var(--ok); }
     .stat .num.danger{ color:var(--danger); }
+    /* .stat이 위에서 flex:1(=flex-basis:0%)로 정의돼 있어서, 모바일에서 그냥 width:50%만
+       주면 flex-basis가 우선 적용돼 무시되고 4개가 한 줄에 다 들어가 버린다. flex 자체를
+       다시 지정해서 flex-basis를 50%로 덮어써야 실제로 2x2로 줄바꿈된다. */
+    /* 4칸이 2x2로 줄바꿈되면 위·아래 칸 사이엔 구분선이 없어서 경계가 잘 안 보인다는
+       피드백을 반영해, 아래쪽 두 칸(3·4번째)에 위쪽 테두리를 그어 가로선을 추가한다. */
+    @media (max-width:720px){
+      .stat-row{ flex-wrap:wrap; }
+      .stat{ flex:0 0 50%; width:50%; }
+      .stat:nth-child(n+3){ border-top:1px solid var(--border); }
+      /* :first-child 규칙은 전체 4칸 중 맨 처음(1번) 것만 border-left를 없애는데,
+         2x2로 줄바꿈되면 3번째 칸도 줄의 맨 왼쪽에 오게 된다. 이 칸은 여전히
+         border-left가 남아있어서 바깥 stat-row 테두리와 겹쳐 그 자리만 선이
+         두꺼워 보였다 — 3번째 칸도 왼쪽 테두리를 없앤다. */
+      .stat:nth-child(3){ border-left:none; }
+    }
     @media (max-width:420px){ .stat{ padding:12px 10px; } .stat .num{ font-size:15px; } }
     .stat .num.info{ color:var(--accent); }
     .stat-top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
@@ -4168,7 +4240,18 @@
           return wraps.every(w => w.scrollHeight <= w.clientHeight + 1);
         }
         if (isMobile) {
-          allFit(1);
+          // 예전엔 모바일은 무조건 1배로 고정해서 못 들어가는 내용은 그냥 잘리게 뒀는데,
+          // "칸 안에 내용이 다 들어가게" 요청에 따라 모니터 모드와 같은 방식으로 바꾼다 —
+          // 화면(칸)이 작으니 1배보다 키우지는 않고, 다 안 들어가면 글씨를 줄여서라도
+          // (최소 0.15배까지) 전부 보이게 한다.
+          if (!allFit(1)) {
+            let lo = 0.15, hi = 1, best = 0.15;
+            for (let i = 0; i < 16; i++) {
+              const mid = (lo + hi) / 2;
+              if (allFit(mid)) { best = mid; lo = mid; } else { hi = mid; }
+            }
+            allFit(best);
+          }
         } else if (isTv) {
           // 실제 현장 모니터 해상도가 1920x1080부터 3840x2160(4K)까지 제각각이라, CSS의
           // --tv-res-scale(화면 너비 기준 배율, 위 :host(.mode-tv) 참고)이 해상도 차이는
@@ -4195,12 +4278,12 @@
           }
           allFit(best);
         }
-        // 모바일은 잘리는 게 정상이라 "더 있음" 표시를 굳이 띄우지 않는다(칸마다 항상 켜져
-        // 있으면 오히려 시끄럽다). 모니터/TV는 극단적으로 일정이 많아 최소 배율(0.15)로도
-        // 다 담기지 않는 경우에 대비한 안전장치로만 표시한다.
+        // 모바일도 이제 모니터/TV처럼 다 담기려고 시도하므로, 극단적으로 일정이 많아
+        // 최소 배율(0.15)로도 다 담기지 않는 경우에 대비한 안전장치로 "더 있음" 표시를
+        // 똑같이 띄운다.
         grid.querySelectorAll('.day-cell').forEach(cell => {
           const w = cell.querySelector('.day-events');
-          cell.classList.toggle('has-more', !isMobile && !!w && w.scrollHeight > w.clientHeight + 1);
+          cell.classList.toggle('has-more', !!w && w.scrollHeight > w.clientHeight + 1);
         });
       });
     }
@@ -4222,8 +4305,30 @@
       root.getElementById('modalSub').textContent = `작업 일정 ${dayEvents.length}건` + (dayCustom.length ? ` · 휴일/기타 ${dayCustom.length}건` : '');
 
       modalBody.innerHTML = '';
+
+      // 이 날짜를 보다가 바로 수주 등록으로 넘어갈 수 있게, 목록 맨 위에 버튼을 둔다
+      // (기존처럼 날짜를 눌러 일정을 보고/수정하는 기능은 그대로 두고 버튼만 추가한 것).
+      // 일정이 없는 날은 아래에서 modalBody.innerHTML을 통째로 덮어써서 이 버튼이 같이
+      // 사라져버렸었다 — 버튼은 항상 남아있도록 그 뒤에 별도 엘리먼트로 추가한다.
+      const goOrderBtn = document.createElement('button');
+      goOrderBtn.type = 'button';
+      goOrderBtn.className = 'ev-btn primary go-orderform-btn';
+      goOrderBtn.textContent = '수주 등록';
+      goOrderBtn.addEventListener('click', () => {
+        // switchView('orderform')가 화면을 전환하면서 알아서 한 번 refresh해준다 —
+        // 여기서 따로 refresh를 또 부르면 방금 정한 날짜가 그새 지워지고 오늘로
+        // 돌아가버리니, 반드시 이 값만 정해두고 switchView에게 맡긴다.
+        PENDING_ORDERFORM_DATE = ymd(date);
+        closeModal();
+        switchView('orderform');
+      });
+      modalBody.appendChild(goOrderBtn);
+
       if (!dayEvents.length && !dayCustom.length) {
-        modalBody.innerHTML = '<div class="modal-empty">이 날짜에 등록된 일정이 없습니다.</div>';
+        const emptyEl = document.createElement('div');
+        emptyEl.className = 'modal-empty';
+        emptyEl.textContent = '이 날짜에 등록된 일정이 없습니다.';
+        modalBody.appendChild(emptyEl);
       } else {
         dayCustom.forEach(c => {
           const card = document.createElement('div');
@@ -4594,12 +4699,46 @@
     }
     const LIST_PERIOD_LABEL = { month:'월별', quarter:'분기별', year:'연도별' };
 
+    // 수주 등록의 "연락처 상세" 입력값 — 클릭 없이 항상 다 보여줬더니 목록이 너무 복잡해
+    // 보인다는 피드백을 반영해, 다시 눌러야 펼쳐지는 토글로 되돌린다. 값이 하나라도 있는
+    // 건에만 토글 버튼이 생긴다.
+    const expandedContact = new Set();
+    function contactRows(o){
+      const c = o.contact;
+      if (!c) return [];
+      return [
+        ['점포주소', c.address], ['발주처 담당자', c.clientContact], ['전화번호', c.clientPhone],
+        ['인테리어업체', c.interior], ['현장소장', c.siteManager], ['현장소장 전화번호', c.siteManagerPhone],
+        ['점주/매니저', c.storeManager], ['점주/매니저 전화번호', c.storeManagerPhone],
+      ].filter(([,v]) => v);
+    }
+    function contactDetailRowHtml(o){
+      const rows = contactRows(o);
+      if (!rows.length) return '';
+      return `
+        <tr class="contact-detail-row" data-id="${o.id}">
+          <td></td>
+          <td colspan="9">
+            <div class="contact-detail">
+              ${rows.map(([k,v]) => `<div class="contact-detail-item"><span class="k">${k}</span><span class="v">${escapeHtml(v)}</span></div>`).join('')}
+            </div>
+          </td>
+        </tr>`;
+    }
+
     function orderRowHtml(o, i){
       const nameCell = `
         <td class="cell-client">
           <div class="name">${escapeHtml(o.store)} ${o.urgent ? '<span class="urgent-tag">긴급</span>' : ''}</div>
           <div class="brand">${escapeHtml(brandLabel(o.brand))} · ${escapeHtml(o.client)}</div>
         </td>`;
+      const hasContact = contactRows(o).length > 0;
+      const nameCellView = hasContact ? `
+        <td class="cell-client">
+          <div class="name">${escapeHtml(o.store)} ${o.urgent ? '<span class="urgent-tag">긴급</span>' : ''}</div>
+          <div class="brand">${escapeHtml(brandLabel(o.brand))} · ${escapeHtml(o.client)}</div>
+          <button type="button" class="contact-toggle" data-id="${o.id}">연락처 상세 ${expandedContact.has(o.id) ? '숨기기 ▴' : '보기 ▾'}</button>
+        </td>` : nameCell;
       if (editingId === o.id && pendingDeleteId === o.id) {
         // 삭제 확인 중에는 편집용 입력칸들을 잠깐 감추고, 이 건을 지우면 매출도 함께 지워진다는
         // 안내와 취소/삭제 버튼만 보여준다 — 입력칸이 늘어놓는 폭 때문에 다시 좌우 스크롤이
@@ -4643,7 +4782,7 @@
       return `
         <tr>
           <td class="mono col-num">${i + 1}</td>
-          ${nameCell}
+          ${nameCellView}
           <td>${o.rep}</td>
           <td class="mono">${dispDate(o.orderDate)}</td>
           <td class="mono">${dispDate(o.confirmDate) || '-'}</td>
@@ -4653,6 +4792,7 @@
           <td class="center">${renderPaymentCell(o)}</td>
           <td class="col-manage"><button type="button" class="row-btn edit-row" data-id="${o.id}">수정</button></td>
         </tr>
+        ${hasContact && expandedContact.has(o.id) ? contactDetailRowHtml(o) : ''}
       `;
     }
 
@@ -4715,6 +4855,14 @@
       });
       tbody.querySelectorAll('.edit-row').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = Number(btn.dataset.id); pendingDeleteId = null; render(); });
+      });
+      tbody.querySelectorAll('.contact-toggle').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.id);
+          if (expandedContact.has(id)) expandedContact.delete(id); else expandedContact.add(id);
+          render();
+        });
       });
       tbody.querySelectorAll('.cancel-row').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); editingId = null; pendingDeleteId = null; render(); });
@@ -5432,6 +5580,15 @@
     }
 
     (function(){
+      // 일정표에서 특정 날짜의 "수주 등록" 버튼을 눌러 넘어온 경우, 수주일을 오늘이 아니라
+      // 그 날짜로 미리 채운다(납품 일정 칸은 별개라 건드리지 않는다 — 수주일과 납품일이
+      // 다른 경우가 많아서다). 한 번 쓰고 나면 바로 비워서, 이후 이 화면을 다시 열거나
+      // 다른 곳에서 들어왔을 때는 영향이 없게 한다.
+      if (PENDING_ORDERFORM_DATE) {
+        root.getElementById('f-orderdate').value = PENDING_ORDERFORM_DATE;
+        PENDING_ORDERFORM_DATE = null;
+        return;
+      }
       const d = new Date();
       const pad = n => String(n).padStart(2,'0');
       root.getElementById('f-orderdate').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -5854,6 +6011,8 @@
       updateSummary();
     }
     addTaskRow();
+    // 납품 일정 칸은 수주일과 다를 수 있어서(당일 등록해도 납품은 나중에 하는 경우가 많음)
+    // 더 이상 자동으로 채우지 않는다 — 일정표에서 넘어온 날짜는 위 수주일 칸에만 반영한다.
     root.getElementById('addTask').addEventListener('click', addTaskRow);
 
     // 사이드바 "등록 요약"에 지금까지 입력한 값을 실시간으로 반영한다.
@@ -5935,10 +6094,24 @@
       taskDates.sort();
       const nextField = taskDates.length ? taskDates[0] : '—';
 
+      // "연락처 상세(선택)" 카드에 입력한 값들 — 예전엔 발주처 자동완성에만 쓰이고 저장은
+      // 안 돼서, 입력해도 어디서도 다시 볼 수가 없었다. 이제 수주 건에 같이 저장해서
+      // 영업 관리에서 볼 수 있게 한다. 아무것도 안 채웠으면 undefined로 둬서, 목록에서
+      // 굳이 빈 "상세보기"를 보여주지 않게 한다.
+      const contactVal = (id) => { const el = root.getElementById(id); return el ? el.value.trim() : ''; };
+      const contact = {
+        address: contactVal('f-address'), clientContact: contactVal('f-clientcontact'),
+        clientPhone: contactVal('f-clientphone'), interior: contactVal('f-interior'),
+        siteManager: contactVal('f-sitemanager'), siteManagerPhone: contactVal('f-sitemanagerphone'),
+        storeManager: contactVal('f-storemanager'), storeManagerPhone: contactVal('f-storemanagerphone'),
+      };
+      const hasContact = Object.values(contact).some(v => v);
+
       ORDERS.push({
         id: newOrderId, brand: brandVal, client: clientVal, store: storeVal, rep: repVal,
         orderDate: orderDateIso, confirmDate: confirmDateIso || '—',
         urgent, next: nextField, amount, finalAmount: null, confirmed: false, paid: false,
+        contact: hasContact ? contact : null,
       });
 
       showToast('수주가 등록되었습니다. 영업 관리·일정표에 바로 반영됩니다.');
@@ -7245,6 +7418,16 @@
     if (view === 'schedule') {
       const scheduleEl = document.querySelector('domus-schedule-page');
       if (scheduleEl && typeof scheduleEl.__scheduleSetMode === 'function') scheduleEl.__scheduleSetMode('general');
+    }
+    // 수주 등록 화면은 메뉴에서 들어올 때마다 새로 그려서, 이전에 작성하다 만 내용이나
+    // 일정표에서 넘어왔을 때의 날짜가 남아있지 않고 항상 깨끗한 폼(수주일=오늘)으로
+    // 시작하게 한다. 일정표에서 특정 날짜로 넘어오는 경우는 PENDING_ORDERFORM_DATE를
+    // 미리 정해두고 이 switchView를 호출하므로, 여기서 한 번만 refresh해도 그 값이
+    // 정상적으로 반영된다(중복으로 refresh를 두 번 부르면 그 값이 도로 지워지므로,
+    // 이 한 곳에서만 refresh한다).
+    if (view === 'orderform') {
+      const orderformEl = document.querySelector('domus-orderform-page');
+      if (orderformEl && typeof orderformEl.refresh === 'function') orderformEl.refresh();
     }
     window.updateSidebarState();
     closeNavMenu();
