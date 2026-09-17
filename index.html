@@ -1283,13 +1283,127 @@
   // 일정표에서 등록하는 휴일/기타 사내 일정 — 페이지 스코프에 두면 다른 화면에서 저장할 때
   // refresh()가 불리면서 매번 초기 샘플로 리셋돼, 등록한 휴일이 얼마 못 가 사라져 보였다.
   // REVENUE_TARGETS와 같은 이유로 모듈 스코프로 올려서 세션 동안 유지되게 한다.
-  let CUSTOM_EVENTS = [
-    { id:'h1', date:'2026-09-24', label:'추석연휴', isHoliday:true },
-    { id:'h2', date:'2026-09-25', label:'추석연휴', isHoliday:true },
-    { id:'h3', date:'2026-09-26', label:'추석연휴', isHoliday:true },
-    { id:'h4', date:'2026-10-03', label:'개천절', isHoliday:true },
-    { id:'h5', date:'2026-10-09', label:'한글날', isHoliday:true },
+  // 법정공휴일은 더 이상 여기에 연도별로 직접 채워넣지 않는다 — 아래 computeYearHolidays()가
+  // 매번 자동으로 계산해서 보여준다. 이 배열은 이제 사용자가 직접 추가하는 휴일/기타 일정만 담는다.
+  let CUSTOM_EVENTS = [];
+
+  // ===== 법정공휴일 자동 계산 =====
+  // "내년, 내후년에도 공휴일이 계속 자동으로 채워지게 해달라"는 요청에 따라, 매년 양력 날짜가
+  // 고정된 공휴일은 아예 계산으로 처리해서 앞으로 몇 년이 지나도 손댈 필요가 없게 한다.
+  // 신정(1/1), 삼일절(3/1), 어린이날(5/5), 현충일(6/6), 광복절(8/15), 개천절(10/3),
+  // 한글날(10/9), 성탄절(12/25)이 여기 해당한다. 대체공휴일 규정(2023년 개정 기준)도 함께
+  // 계산한다 — 삼일절·어린이날·부처님오신날·광복절·개천절·한글날은 토·일요일과 겹치면 그
+  // 다음 첫 평일에 하루가 더 생기고, 신정·현충일·성탄절은 대체공휴일 대상이 아니다.
+  const FIXED_HOLIDAYS = [
+    { md:[1,1], label:'신정', substitute:false },
+    { md:[3,1], label:'삼일절', substitute:true },
+    { md:[5,5], label:'어린이날', substitute:true },
+    { md:[6,6], label:'현충일', substitute:false },
+    { md:[8,15], label:'광복절', substitute:true },
+    { md:[10,3], label:'개천절', substitute:true },
+    { md:[10,9], label:'한글날', substitute:true },
+    { md:[12,25], label:'성탄절', substitute:false },
   ];
+
+  // 설날·추석·부처님오신날은 음력 기준이라 해마다 양력 날짜가 달라져서, 정확한 음력 변환 없이는
+  // 자동 계산이 어렵다 — 그래서 이 표에만 연도별로 날짜를 직접 채워넣는다(연초에 그 해 날짜가
+  // 언론에 미리 공지되니, 새해가 되면 이 표에 한 줄만 추가해주면 된다). 나머지 공휴일은 모두
+  // 자동으로 계산되므로, 매년 챙겨야 하는 건 이 표 하나뿐이다.
+  const LUNAR_HOLIDAYS_BY_YEAR = {
+    2026: { seollal:'02-17', chuseok:'09-25', buddha:'05-24' },
+  };
+
+  const YMD_RE_MD = /^(\d{2})-(\d{2})$/;
+  function ymdStr(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+  function isWeekendDate(d){ const w = d.getDay(); return w === 0 || w === 6; }
+
+  // 한 해의 공휴일(자동계산 + 연도표에 있는 음력 공휴일 + 대체공휴일)을 전부 계산해서 돌려준다.
+  // 매번 다시 계산하기보다 연도별로 한 번 계산해서 캐시해둔다.
+  const _holidayCache = new Map();
+  function computeYearHolidays(year){
+    if (_holidayCache.has(year)) return _holidayCache.get(year);
+    const list = [];
+    const byDate = new Set();
+    function add(y,m,d,label){
+      const key = ymdStr(y,m,d);
+      if (byDate.has(key)) return; // 같은 날 다른 공휴일이 이미 있으면 라벨을 겹쳐 넣지 않는다
+      list.push({ id:`auto-${key}`, date:key, label, isHoliday:true, auto:true });
+      byDate.add(key);
+    }
+    function findSubstitute(y,m,d){
+      const dt = new Date(y, m-1, d);
+      dt.setDate(dt.getDate() + 1);
+      while (true) {
+        const key = ymdStr(dt.getFullYear(), dt.getMonth()+1, dt.getDate());
+        if (!isWeekendDate(dt) && !byDate.has(key)) return { y:dt.getFullYear(), m:dt.getMonth()+1, d:dt.getDate() };
+        dt.setDate(dt.getDate() + 1);
+      }
+    }
+
+    FIXED_HOLIDAYS.forEach(h => add(year, h.md[0], h.md[1], h.label));
+
+    const lunar = LUNAR_HOLIDAYS_BY_YEAR[year];
+    let seollalRange = null, chuseokRange = null;
+    if (lunar) {
+      if (lunar.seollal && YMD_RE_MD.test(lunar.seollal)) {
+        const base = new Date(year, Number(lunar.seollal.slice(0,2))-1, Number(lunar.seollal.slice(3,5)));
+        seollalRange = [-1,0,1].map(off => { const d2 = new Date(base); d2.setDate(d2.getDate()+off); return d2; });
+        seollalRange.forEach((d2, i) => add(d2.getFullYear(), d2.getMonth()+1, d2.getDate(), i === 1 ? '설날' : '설날연휴'));
+      }
+      if (lunar.chuseok && YMD_RE_MD.test(lunar.chuseok)) {
+        const base = new Date(year, Number(lunar.chuseok.slice(0,2))-1, Number(lunar.chuseok.slice(3,5)));
+        chuseokRange = [-1,0,1].map(off => { const d2 = new Date(base); d2.setDate(d2.getDate()+off); return d2; });
+        chuseokRange.forEach(d2 => add(d2.getFullYear(), d2.getMonth()+1, d2.getDate(), '추석연휴'));
+      }
+      if (lunar.buddha && YMD_RE_MD.test(lunar.buddha)) {
+        add(year, Number(lunar.buddha.slice(0,2)), Number(lunar.buddha.slice(3,5)), '부처님오신날');
+      }
+    }
+
+    // 토·일요일에 겹치는 대체공휴일 대상(양력 고정 공휴일 + 부처님오신날)
+    const singleDaySubs = [];
+    FIXED_HOLIDAYS.filter(h => h.substitute).forEach(h => {
+      const d2 = new Date(year, h.md[0]-1, h.md[1]);
+      if (isWeekendDate(d2)) singleDaySubs.push({ y:year, m:h.md[0], d:h.md[1], label:h.label });
+    });
+    if (lunar && lunar.buddha && YMD_RE_MD.test(lunar.buddha)) {
+      const m = Number(lunar.buddha.slice(0,2)), d = Number(lunar.buddha.slice(3,5));
+      const d2 = new Date(year, m-1, d);
+      if (isWeekendDate(d2)) singleDaySubs.push({ y:year, m, d, label:'부처님오신날' });
+    }
+    singleDaySubs.forEach(h => {
+      const sub = findSubstitute(h.y, h.m, h.d);
+      add(sub.y, sub.m, sub.d, `${h.label} 대체`);
+    });
+
+    // 설날/추석 연휴 중 일요일이 낀 경우 — 연휴 마지막 날 다음의 첫 평일에 하루 추가
+    // (토요일만 겹칠 때는 설날·추석은 대체공휴일 대상이 아니다 — 일요일 겹침만 해당.)
+    function maybeAddRangeSubstitute(range, label){
+      if (!range) return;
+      if (!range.some(d2 => d2.getDay() === 0)) return;
+      const last = range[range.length - 1];
+      const sub = findSubstitute(last.getFullYear(), last.getMonth()+1, last.getDate());
+      add(sub.y, sub.m, sub.d, `${label} 대체`);
+    }
+    maybeAddRangeSubstitute(seollalRange, '설날');
+    maybeAddRangeSubstitute(chuseokRange, '추석');
+
+    _holidayCache.set(year, list);
+    return list;
+  }
+  function autoHolidaysByDate(key){
+    const year = Number(key.slice(0,4));
+    if (!year) return [];
+    return computeYearHolidays(year).filter(h => h.date === key);
+  }
+
+  // 일정표 달력에서 지금 몇 년/몇 월을 보고 있는지 — 페이지 스코프에 두면 수주 등록 등
+  // 다른 화면에서 저장할 때 refreshAllPages()가 불리면서 일정표도 다시 그려지고, 그러면
+  // 매번 "오늘이 속한 달"로 리셋돼버려서, 이전 달/다음 달로 넘겨둔 상태가 사라지는
+  // 문제가 있었다(예: 10월로 넘긴 뒤 수주를 등록하면 저장 직후 9월로 되돌아가 버림).
+  // 모듈 스코프로 올려서 세션 동안 사용자가 넘겨둔 달이 유지되게 한다.
+  let SCHEDULE_VIEW_YEAR = null;
+  let SCHEDULE_VIEW_MONTH = null;
 
   // 매출 목표 관리에서 등록한 목표치 — 페이지 스코프에 두면 다른 화면 저장 시 refresh()가 불릴 때마다 초기화되므로
   // 모듈 스코프로 올려서 세션 동안 유지되게 한다.
@@ -2503,7 +2617,9 @@
       :host(:not(.mode-tv)) .board{ padding:0; gap:0; }
       :host(:not(.mode-tv)) .topbar{ padding:10px 14px 6px; }
       :host(:not(.mode-tv)) .panel{ border:none; border-radius:0; box-shadow:none; }
-      :host(:not(.mode-tv)) .cal-grid{ grid-template-rows:repeat(6, 1fr); }
+      /* grid-template-rows는 더 이상 여기서 고정하지 않는다 — JS(renderCalendar)가 그 달에
+         실제 필요한 주 수(weeksNeeded)로 인라인 스타일을 넣어주므로, 5주짜리 달과 6주짜리
+         달의 칸 크기가 서로 달라 보이지 않는다. */
       /* 현장(TV) 일정표처럼 칸 안 여백도 최소화해서, 글씨가 칸 테두리에 거의 붙게 한다
          (TV 모드의 day-cell/ev-chip 여백 값 참고). */
       :host(:not(.mode-tv)) .day-cell{ overflow:hidden; padding:2px; gap:1px; }
@@ -3101,6 +3217,12 @@
       width:100%; min-width:0; box-sizing:border-box;
     }
     .field textarea{ resize:vertical; min-height:64px; }
+    /* 날짜 칸에 값이 비어있을 때("날짜 선택" 플레이스홀더)와 값이 채워져 있을 때
+       (예: "2026.09.17") 브라우저가 내부적으로 다른 높이로 그려서, 값을 아직 안 넣은
+       "수주확정일" 같은 칸이 값이 있는 "수주일" 칸보다 눈에 띄게 낮아 보였다 — 값 유무와
+       상관없이 항상 같은 높이가 되도록 명시적으로 고정한다(납품 일정 칸에서 이미 같은
+       이유로 썼던 방식과 동일). */
+    .field input[type="date"]{ height:37px; box-sizing:border-box; }
     .field .hint{ font-size:11px; color:var(--text-faint); }
     .field .hint.new{ color:var(--accent); font-weight:600; }
     .field .kdate-wrap{ display:block; width:100%; }
@@ -3114,6 +3236,12 @@
       background-repeat:no-repeat; background-position:right 14px center; background-size:14px;
       padding-right:34px;
     }
+    /* "담당자 선택"처럼 아직 아무것도 안 고른 상태의 안내 문구는 다른 입력칸의 placeholder처럼
+       옅은 회색으로 보여야 실제로 입력한 값과 구분이 된다 — 지금은 검은 글씨라 이미 담당자를
+       고른 것처럼 보였다. 값을 아직 안 고른 select에만 옅은 색을 준다(고르고 나면 select.value
+       변경 시 JS가 이 클래스를 떼어내서 다시 진한 색으로 돌아온다). */
+    .field select.placeholder{ color:var(--text-faint); }
+    .field select option{ color:var(--text); }
 
     /* 브랜드/발주처 — 목록에서 골라 쓰거나, 없으면 그 자리에서 코드까지 정해 새로 등록하는 콤보박스. */
     .combo-field{ position:relative; }
@@ -3210,6 +3338,16 @@
     .task-row{
       border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:10px;
       background:var(--surface-2); position:relative;
+    }
+    /* "납품 일정" 박스가 자기 테두리 안에 또 좌우 여백(padding)을 두고 있어서, 그 안의 날짜
+       칸이 다른 칸(수주일·수주확정일 등)보다 눈에 띄게 좁아 보였다 — 모바일에서는 이 박스의
+       좌우 여백을 없애서 안의 입력칸들이 폼의 다른 칸들과 같은 너비로 맞춰지게 한다.
+       (여러 건 추가했을 때 구분은 위쪽 선 하나로만 표시한다.) 이 규칙이 위의 기본 .task-row보다
+       뒤에 있어야 이긴다 — 미디어쿼리 안에 있어도 소스 순서가 앞서면 밀려날 수 있다.
+       (전에 .stat-row 2x2 정렬에서 겪었던 것과 같은 종류의 문제.) */
+    @media (max-width:900px){
+      .task-row{ padding:12px 0; border:none; border-radius:0; background:transparent; border-top:1px solid var(--border); }
+      .task-row:first-child{ border-top:none; padding-top:0; }
     }
     /* 여러 개일 때 헷갈릴까 봐 번호를 매겼었는데, 어차피 위에서부터 순서대로라 굳이
        필요 없다는 의견이 있어 없앴다 — 삭제 버튼만 오른쪽에 남긴다. */
@@ -4093,10 +4231,14 @@
 
     // 실제 데이터는 모듈 스코프의 CUSTOM_EVENTS에 있다 — 다른 화면 저장으로 이 페이지가
     // refresh()될 때도 등록한 휴일/기타 일정이 사라지지 않도록 하기 위함.
-    function customEventsByDate(key){ return CUSTOM_EVENTS.filter(c => c.date === key); }
+    // 사용자가 직접 추가한 휴일/기타 일정에, 자동으로 계산되는 법정공휴일(computeYearHolidays)을
+    // 함께 합쳐서 보여준다 — 자동 계산된 항목이 앞에 오게 해서 달력 칸에 "[휴일]"이 먼저 보이게 한다.
+    function customEventsByDate(key){ return [...autoHolidaysByDate(key), ...CUSTOM_EVENTS.filter(c => c.date === key)]; }
 
-    let viewYear = today.getFullYear();
-    let viewMonth = today.getMonth();
+    // 이전/다음 달로 넘겨둔 상태를 다른 화면 저장 후에도 유지하기 위해, 모듈 스코프에
+    // 저장된 값이 있으면 그걸로 시작하고 없으면(첫 진입) 오늘이 속한 달로 시작한다.
+    let viewYear = SCHEDULE_VIEW_YEAR != null ? SCHEDULE_VIEW_YEAR : today.getFullYear();
+    let viewMonth = SCHEDULE_VIEW_MONTH != null ? SCHEDULE_VIEW_MONTH : today.getMonth();
 
     function renderCalendar(){
       // 상단 타이틀: 연도 + 오늘 날짜를 보여준다. 화살표로 다른 달을 보고 있을 때는
@@ -4121,9 +4263,12 @@
       // 현장(TV) 모드는 스크롤 없이 화면 전체에 꽉 차야 하므로, 일반 모드(넓은 화면)와
       // 똑같이 이번 달에 필요한 주 수만큼 세로 공간을 균등 분할하는 고정 그리드를 쓴다.
       // 좁은 화면(휴대폰)만 내용에 맞춰 늘어나는 레이아웃(아래 모바일 미디어쿼리)을 쓴다.
-      const isWideScreen = !window.matchMedia || window.matchMedia('(min-width: 901px)').matches;
       const isTvVariableHeight = false;
-      grid.style.gridTemplateRows = (isWideScreen && !isTvVariableHeight) ? `repeat(${weeksNeeded}, 1fr)` : '';
+      // 예전엔 좁은 화면(휴대폰)에서는 이 값을 비워두고 CSS의 고정값(6행)에 맡겼는데,
+      // 그러면 그 달이 5주짜리든 6주짜리든 항상 6행으로 나눠서 5주짜리 달(10월 등)은
+      // 마지막에 빈 행이 하나 남아 칸 크기가 9월과 다르게 보였다. 이제 모바일도 데스크탑과
+      // 똑같이 실제 필요한 주 수(weeksNeeded)로 나눠서, 어떤 달이든 칸 크기가 일정하게 한다.
+      grid.style.gridTemplateRows = !isTvVariableHeight ? `repeat(${weeksNeeded}, 1fr)` : '';
 
       function buildCell(cellDate){
         const key = ymd(cellDate);
@@ -4333,12 +4478,15 @@
         dayCustom.forEach(c => {
           const card = document.createElement('div');
           card.className = 'ev-card holiday';
+          // 자동으로 계산된 법정공휴일(c.auto)은 CUSTOM_EVENTS에 실제로 들어있는 항목이 아니라서
+          // 삭제 버튼을 눌러도 지워지지 않는다 — 혼란을 주지 않도록 이 항목엔 삭제 버튼 자체를 숨긴다.
           card.innerHTML = `
             <div class="row">
               <span class="client"><span class="type-tag">${c.isHoliday ? '[휴일]' : '[기타]'}</span>${escapeHtml(c.label)}</span>
-              <button type="button" class="del-btn">삭제</button>
+              ${c.auto ? '' : '<button type="button" class="del-btn">삭제</button>'}
             </div>
           `;
+          if (c.auto) { modalBody.appendChild(card); return; }
           card.querySelector('.del-btn').addEventListener('click', () => {
             CUSTOM_EVENTS = CUSTOM_EVENTS.filter(x => x.id !== c.id);
             renderCalendar();
@@ -4536,14 +4684,17 @@
 
     root.getElementById('prevBtn').addEventListener('click', () => {
       viewMonth--; if (viewMonth < 0){ viewMonth = 11; viewYear--; }
+      SCHEDULE_VIEW_YEAR = viewYear; SCHEDULE_VIEW_MONTH = viewMonth;
       renderCalendar();
     });
     root.getElementById('nextBtn').addEventListener('click', () => {
       viewMonth++; if (viewMonth > 11){ viewMonth = 0; viewYear++; }
+      SCHEDULE_VIEW_YEAR = viewYear; SCHEDULE_VIEW_MONTH = viewMonth;
       renderCalendar();
     });
     root.getElementById('calToday').addEventListener('click', () => {
       viewYear = today.getFullYear(); viewMonth = today.getMonth();
+      SCHEDULE_VIEW_YEAR = viewYear; SCHEDULE_VIEW_MONTH = viewMonth;
       renderCalendar();
     });
 
@@ -4911,6 +5062,13 @@
           o.orderDate = row.querySelector('.edit-orderdate').value.trim() || o.orderDate;
           o.confirmDate = row.querySelector('.edit-confirmdate').value.trim();
           o.next = row.querySelector('.edit-next').value.trim();
+          // 영업 관리에서 납품일을 직접 고치면 일정표(ORDER_TASKS)에도 그대로 반영해야
+          // 일정표 쪽이 옛날 날짜로 남아있지 않는다 — 납품 일정이 하나뿐인 건에 한해서
+          // 자동으로 맞춰준다(여러 건이면 어느 걸 바꿀지 모호하므로 그대로 둔다).
+          const linkedTasksForNext = ORDER_TASKS.filter(t => t.orderId === o.id);
+          if (linkedTasksForNext.length === 1 && isValidIsoDate(o.next)) {
+            linkedTasksForNext[0].date = o.next;
+          }
           const amtInput = row.querySelector('.edit-amount');
           if (amtInput) {
             const raw = amtInput.value.replace(/[^\d]/g, '');
@@ -5550,17 +5708,17 @@
     const CLIENTS = {
       '스타벅스 본사': { contact:'', phone:'', interior:'', address:'' },
       '디엔아이': { contact:'', phone:'', interior:'', address:'' },
-      '파리바게뜨': { contact:'백상진', phone:'02-2222-3333', interior:'', address:'' },
+      '파리바게뜨': { contact:'', phone:'', interior:'', address:'' },
       '키예노': { contact:'', phone:'', interior:'', address:'' },
       '공간디자인': { contact:'', phone:'', interior:'', address:'' },
-      '금강제화': { contact:'조원석', phone:'02-4444-5555', interior:'대한인테리어', address:'' },
+      '금강제화': { contact:'', phone:'', interior:'', address:'' },
       '우리가디자인': { contact:'', phone:'', interior:'', address:'' },
       '삼립': { contact:'', phone:'', interior:'', address:'' },
       '스페이스갬': { contact:'', phone:'', interior:'', address:'' },
       '비커밍': { contact:'', phone:'', interior:'', address:'' },
       '디자인에너지': { contact:'', phone:'', interior:'', address:'' },
       '큐앤플랜': { contact:'', phone:'', interior:'', address:'' },
-      '파리크라상': { contact:'심배현', phone:'02-1234-5678', interior:'', address:'' },
+      '파리크라상': { contact:'', phone:'', interior:'', address:'' },
       '아이디어뮤토': { contact:'', phone:'', interior:'', address:'' },
       '에이플러스': { contact:'', phone:'', interior:'', address:'' },
       '개인': { contact:'', phone:'', interior:'', address:'' },
@@ -5577,6 +5735,11 @@
     } else {
       repSelect.innerHTML = '<option value="" disabled selected>담당자 선택</option>' +
         STAFF.map(name => `<option value="${name}">${name}</option>`).join('');
+      // 아직 담당자를 고르지 않은 "담당자 선택" 상태는 옅은 회색으로, 실제로 고른 뒤에는
+      // 다시 진한 글씨로 — select의 value가 바뀔 때마다 다시 판단한다.
+      const syncRepPlaceholder = () => repSelect.classList.toggle('placeholder', !repSelect.value);
+      syncRepPlaceholder();
+      repSelect.addEventListener('change', syncRepPlaceholder);
     }
 
     (function(){
