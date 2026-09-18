@@ -184,10 +184,7 @@
     <div class="login-buttons" id="loginButtons">
       <button class="login-btn owner" id="loginOwnerBtn">관리자로 로그인</button>
       <button class="login-btn accounting" id="loginAccountingBtn">경리로 로그인</button>
-      <button class="login-btn" data-rep="이현재">이현재로 로그인</button>
-      <button class="login-btn" data-rep="박성중">박성중으로 로그인</button>
-      <button class="login-btn" data-rep="김선우">김선우로 로그인</button>
-      <button class="login-btn general" data-rep="일반">일반으로 로그인</button>
+      <button class="login-btn general" data-rep="일반" id="loginGeneralBtn">일반으로 로그인</button>
     </div>
     <div class="login-foot">시안 데모 — 비밀번호 없이 계정만 선택합니다</div>
   </div>
@@ -325,6 +322,7 @@
       <div class="section-tabs" id="sectionTabs">
         <button class="section-tab active" data-sec="list">영업 내역</button>
         <button class="section-tab" data-sec="analysis">영업 분석</button>
+        <button class="section-tab" data-sec="staff">담당자 관리</button>
       </div>
       <div class="tabs" id="analysisPeriodTabs" hidden>
         <button class="tab active" data-p="month">월별</button>
@@ -485,6 +483,15 @@
           <div class="foot" id="salesTableFoot"></div>
           <button class="export-btn" id="salesExportBtn" type="button">엑셀로 내보내기</button>
         </div>
+      </div>
+    </div>
+
+    <div class="section-panel" data-sec="staff" hidden>
+      <div class="toolbar">
+        <button class="add-btn" id="staffAddBtn" type="button">+ 새 담당자 추가</button>
+      </div>
+      <div class="card">
+        <div id="staffListBody"></div>
       </div>
     </div>
   </div>
@@ -909,7 +916,14 @@
 (function(){
   'use strict';
 
-  const REP_NAMES = ['이현재', '박성중', '이재황', '김선우'];
+  // 담당자 이름 목록 — 영업 관리 > 담당자 관리 탭에서 추가·수정·삭제하는 단일 출처다.
+  // 예전엔 수주 등록/영업 관리/일정표가 각자 따로 이 이름 목록을 하드코딩해서 들고 있어서,
+  // 담당자를 바꾸려면 코드를 여러 곳 고쳐야 했다 — 이제 여기 하나만 고치면 로그인 화면·
+  // 담당자 선택·필터·일정표 담당 배정까지 전부 자동으로 반영된다.
+  let STAFF_LIST = ['이현재', '박성중', '이재황', '김선우'];
+  // 관리자 로그인은 곧 '이재황' 계정으로 들어가는 것과 같다 — 그래서 로그인 화면의
+  // 담당자별 로그인 버튼 목록에서는 이 이름만 빼고 보여준다(관리자 버튼이 이미 있으니까).
+  const OWNER_STAFF_NAME = '이재황';
 
   /* 화면 곳곳에서 브랜드명·발주처명·점포명·작업내용 등 "사용자가 직접 입력한 텍스트"를
      innerHTML로 그려주는데, 이스케이프 없이 그대로 꽂으면 <script>나 <img onerror=...> 같은
@@ -1404,6 +1418,12 @@
   // 모듈 스코프로 올려서 세션 동안 사용자가 넘겨둔 달이 유지되게 한다.
   let SCHEDULE_VIEW_YEAR = null;
   let SCHEDULE_VIEW_MONTH = null;
+
+  // 영업 관리 화면에서 지금 "영업 내역/영업 분석/담당자 관리" 중 어느 탭을 보고 있는지 —
+  // 같은 이유로 모듈 스코프에 둔다. 담당자 관리 탭에서 저장/삭제하면 refreshAllPages()가
+  // 영업 관리 화면도 다시 그리는데, 이 값이 페이지 스코프에 있으면 매번 "영업 내역" 탭으로
+  // 되돌아가 버려서 담당자를 여러 명 연달아 등록/수정하기 불편하다.
+  let SALES_ACTIVE_SECTION = 'list';
 
   // 매출 목표 관리에서 등록한 목표치 — 페이지 스코프에 두면 다른 화면 저장 시 refresh()가 불릴 때마다 초기화되므로
   // 모듈 스코프로 올려서 세션 동안 유지되게 한다.
@@ -3151,6 +3171,45 @@
     .mini-table td.mt-cmp{ width:24%; text-align:right; }
     .bar-track{ height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
     .bar-fill{ height:100%; background:var(--accent); border-radius:4px; }
+
+    /* 담당자 관리 탭 — 브랜드 관리 화면과 같은 카드/행 스타일을 그대로 가져와 통일한다. */
+    .page-sub{ font-size:12.5px; color:var(--text-faint); line-height:1.6; }
+    .toolbar{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .add-btn{
+      background:var(--accent); color:#fff; border:none; border-radius:8px;
+      padding:10px 18px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;
+    }
+    #staffListBody{ background:var(--surface); }
+    .staff-row{ display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border); }
+    .staff-row:last-child{ border-bottom:none; }
+    .staff-avatar{
+      width:34px; height:34px; border-radius:50%; background:var(--accent-soft); color:var(--accent);
+      display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex:none;
+    }
+    .staff-name{ font-size:13.5px; font-weight:700; flex:1; min-width:0; }
+    .staff-name .owner-tag{ font-size:11px; font-weight:600; color:var(--text-faint); margin-left:6px; }
+    .staff-row-actions{ display:flex; gap:4px; flex:none; }
+    .staff-empty{ padding:30px 18px; text-align:center; font-size:13px; color:var(--text-faint); }
+    /* 브랜드 관리 화면의 "수정" 링크 버튼과 동일한 스타일 — 이 페이지(영업 관리) 스코프에는
+       이 클래스 스타일이 없어서 지금까지 기본 버튼 모양(테두리 있는 회색 버튼)으로 보였다. */
+    .edit-link{ font-size:12px; font-weight:700; color:var(--accent); background:none; border:none; cursor:pointer; padding:6px 8px; font-family:inherit; flex:none; }
+    .edit-link:hover{ background:var(--accent-soft); border-radius:6px; }
+
+    .staff-row.editing{ padding:16px 18px; background:var(--surface-2); flex-direction:column; align-items:stretch; gap:12px; }
+    .staff-edit-field{ display:flex; flex-direction:column; gap:6px; }
+    .staff-edit-field label{ font-size:11px; font-weight:700; color:var(--text-faint); }
+    .staff-edit-field input{
+      border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px;
+      padding:8px 10px; font-size:13px; font-family:inherit; width:100%; box-sizing:border-box;
+    }
+    .staff-edit-actions{ display:flex; justify-content:flex-end; gap:8px; align-items:center; }
+    .staff-delete-confirm-text{ font-size:12px; color:var(--text-muted); font-weight:600; margin-right:auto; }
+    .staff-btn{
+      padding:8px 16px; border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer;
+      border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit;
+    }
+    .staff-btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+    .staff-btn.danger-outline{ border-color:var(--danger); color:var(--danger); background:none; }
   `;
 
   const orderFormCSS = `
@@ -4171,7 +4230,9 @@
       '이재황': '#e0b256',
       '김선우': '#f35e52',
     };
-    const REP_NAMES = Object.keys(REP_COLORS);
+    // 담당 배정 드롭다운은 이제 모듈 스코프의 STAFF_LIST(영업 관리 > 담당자 관리에서 관리)를
+    // 그대로 쓴다 — 새로 추가한 담당자도 바로 이 목록에 나타나야 하기 때문.
+    const REP_NAMES = STAFF_LIST;
 
     const QTY_OPTIONS = [5,10,20,30,40,50,60,70,80,90,100,150,200,300];
     function formatQty(qty){ return String(qty); }
@@ -4714,7 +4775,8 @@
     // 다만 "영업 분석"처럼 관리자 전용으로 명시된 화면은 담당자와 마찬가지로 그대로 감춘다).
     const isAccounting = appRole === 'accounting';
     const orders = isStaffSession ? ORDERS.filter(o => o.rep === currentRep) : ORDERS;
-    const REP_OPTIONS = ['이현재', '박성중', '이재황', '김선우'];
+    // 담당자 목록은 영업 관리 > 담당자 관리 탭에서 관리하는 모듈 스코프 STAFF_LIST를 그대로 쓴다.
+    const REP_OPTIONS = STAFF_LIST;
     let editingId = null;
     let pendingDeleteId = null;
 
@@ -4742,18 +4804,25 @@
     const sectionTabsEl = root.getElementById('sectionTabs');
     if (role !== 'owner') {
       sectionTabsEl.style.display = 'none';
+      SALES_ACTIVE_SECTION = 'list';
     }
+    function applySalesSection(sec){
+      SALES_ACTIVE_SECTION = sec;
+      [...sectionTabsEl.querySelectorAll('.section-tab')].forEach(b => b.classList.toggle('active', b.dataset.sec === sec));
+      [...root.querySelectorAll('.section-panel')].forEach(p => { p.hidden = p.dataset.sec !== sec; });
+      const periodTabsEl = root.getElementById('analysisPeriodTabs');
+      if (periodTabsEl) periodTabsEl.hidden = sec !== 'analysis';
+    }
+    // 다른 화면 저장으로 이 페이지가 다시 그려질 때도, 사용자가 보고 있던 탭(특히 담당자
+    // 관리)으로 그대로 돌아오게 한다.
+    applySalesSection(SALES_ACTIVE_SECTION);
     sectionTabsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('.section-tab');
       if (!btn) return;
-      const sec = btn.dataset.sec;
-      [...sectionTabsEl.querySelectorAll('.section-tab')].forEach(b => b.classList.toggle('active', b === btn));
-      [...root.querySelectorAll('.section-panel')].forEach(p => { p.hidden = p.dataset.sec !== sec; });
       // 영업 분석 탭에 있을 때만 월별/분기별/연도별 기간 탭을 탭 바 오른쪽에 보여준다
       // — "영업 분석" 제목 글씨가 탭 이름과 중복돼서 없앤 대신, 이 탭이 분석 전용 컨트롤임을
       // 탭이 보이고 안 보이는 것으로 알 수 있게 한다.
-      const periodTabsEl = root.getElementById('analysisPeriodTabs');
-      if (periodTabsEl) periodTabsEl.hidden = sec !== 'analysis';
+      applySalesSection(btn.dataset.sec);
     });
 
     function fmtWon(n){
@@ -5695,6 +5764,114 @@
       });
     }
 
+    // ===== 담당자 관리 탭 =====
+    // STAFF_LIST(모듈 스코프)를 직접 관리한다 — 여기서 추가/수정/삭제하면 수주 등록의
+    // 담당자 선택, 이 화면의 담당자 필터, 로그인 화면의 담당자별 버튼까지 전부 같은 배열을
+    // 보고 있어서 refreshAllPages()/renderStaffLoginButtons() 한 번으로 다 같이 갱신된다.
+    const staffListBody = root.getElementById('staffListBody');
+    const staffAddBtn = root.getElementById('staffAddBtn');
+    let staffEditingIdx = null;
+    let staffAddingNew = false;
+    let staffPendingDeleteIdx = null;
+
+    function afterStaffChange(){
+      staffEditingIdx = null; staffAddingNew = false; staffPendingDeleteIdx = null;
+      if (typeof window.refreshAllPages === 'function') window.refreshAllPages();
+      if (typeof window.renderStaffLoginButtons === 'function') window.renderStaffLoginButtons();
+    }
+
+    function renderStaffRowView(name, idx){
+      const row = document.createElement('div');
+      row.className = 'staff-row';
+      const isOwner = name === OWNER_STAFF_NAME;
+      row.innerHTML = `
+        <div class="staff-avatar">${escapeHtml(name.slice(0,1))}</div>
+        <div class="staff-name">${escapeHtml(name)}${isOwner ? '<span class="owner-tag">· 관리자 계정</span>' : ''}</div>
+        <div class="staff-row-actions">
+          <button type="button" class="edit-link">수정</button>
+        </div>
+      `;
+      row.querySelector('.edit-link').addEventListener('click', () => {
+        staffEditingIdx = idx; staffAddingNew = false; staffPendingDeleteIdx = null; renderStaffTab();
+      });
+      return row;
+    }
+
+    function renderStaffRowEdit(name, idx, isNew){
+      const row = document.createElement('div');
+      row.className = 'staff-row editing';
+      function paint(){
+        const confirmingDelete = !isNew && staffPendingDeleteIdx === idx;
+        row.innerHTML = confirmingDelete ? `
+          <div class="staff-edit-actions">
+            <span class="staff-delete-confirm-text">삭제할까요? 기존 기록은 그대로 남아요.</span>
+            <button type="button" class="staff-btn e-delete-cancel">취소</button>
+            <button type="button" class="staff-btn danger-outline e-delete-ok">삭제</button>
+          </div>
+        ` : `
+          <div class="staff-edit-field">
+            <label>이름</label>
+            <input class="e-name" value="${escapeHtml(name)}" placeholder="예: 홍길동">
+          </div>
+          <div class="staff-edit-actions">
+            ${isNew ? '' : '<button type="button" class="staff-btn danger-outline e-delete">삭제</button>'}
+            <button type="button" class="staff-btn e-cancel">취소</button>
+            <button type="button" class="staff-btn primary e-save">저장</button>
+          </div>
+        `;
+        const cancelBtn = row.querySelector('.e-cancel');
+        if (cancelBtn) cancelBtn.addEventListener('click', () => { staffEditingIdx = null; staffAddingNew = false; renderStaffTab(); });
+        const deleteBtn = row.querySelector('.e-delete');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => { staffPendingDeleteIdx = idx; paint(); });
+        const deleteCancelBtn = row.querySelector('.e-delete-cancel');
+        if (deleteCancelBtn) deleteCancelBtn.addEventListener('click', () => { staffPendingDeleteIdx = null; paint(); });
+        const deleteOkBtn = row.querySelector('.e-delete-ok');
+        if (deleteOkBtn) deleteOkBtn.addEventListener('click', () => {
+          STAFF_LIST = STAFF_LIST.filter((_, i) => i !== idx);
+          afterStaffChange();
+          if (typeof window.refreshAllPages !== 'function') renderStaffTab();
+        });
+        const saveBtn = row.querySelector('.e-save');
+        if (saveBtn) saveBtn.addEventListener('click', () => {
+          const newName = row.querySelector('.e-name').value.trim();
+          if (!newName) { showToast('이름을 입력해주세요.', 'error'); return; }
+          if (STAFF_LIST.some((n, i) => n === newName && i !== idx)) { showToast('이미 등록된 담당자예요.', 'error'); return; }
+          if (isNew) {
+            STAFF_LIST = [...STAFF_LIST, newName];
+          } else {
+            STAFF_LIST = STAFF_LIST.map((n, i) => i === idx ? newName : n);
+          }
+          afterStaffChange();
+          if (typeof window.refreshAllPages !== 'function') renderStaffTab();
+        });
+      }
+      paint();
+      return row;
+    }
+
+    function renderStaffTab(){
+      staffListBody.innerHTML = '';
+      if (staffAddingNew) {
+        staffListBody.appendChild(renderStaffRowEdit('', STAFF_LIST.length, true));
+      }
+      if (!STAFF_LIST.length && !staffAddingNew) {
+        const emptyEl = document.createElement('div');
+        emptyEl.className = 'staff-empty';
+        emptyEl.textContent = '등록된 담당자가 없습니다.';
+        staffListBody.appendChild(emptyEl);
+      } else {
+        STAFF_LIST.forEach((name, idx) => {
+          staffListBody.appendChild(staffEditingIdx === idx ? renderStaffRowEdit(name, idx, false) : renderStaffRowView(name, idx));
+        });
+      }
+    }
+    if (staffAddBtn) {
+      staffAddBtn.addEventListener('click', () => {
+        staffAddingNew = true; staffEditingIdx = null; staffPendingDeleteIdx = null; renderStaffTab();
+      });
+    }
+    renderStaffTab();
+
     refreshFilterOptions();
     render();
   }
@@ -5703,7 +5880,8 @@
      Order form init
      ========================================================= */
   function initOrderFormPage(root){
-    const STAFF = ['이현재', '박성중', '이재황', '김선우'];
+    // 담당자 목록은 영업 관리 > 담당자 관리 탭에서 관리하는 모듈 스코프 STAFF_LIST를 그대로 쓴다.
+    const STAFF = STAFF_LIST;
 
     const CLIENTS = {
       '스타벅스 본사': { contact:'', phone:'', interior:'', address:'' },
@@ -7639,13 +7817,30 @@
   }
 
   // 관리자 = 이재황 (담당자 선택 목록에서는 제외되고, 관리자로 바로 로그인)
-  document.getElementById('loginOwnerBtn').addEventListener('click', () => enterApp('owner', '이재황'));
+  document.getElementById('loginOwnerBtn').addEventListener('click', () => enterApp('owner', OWNER_STAFF_NAME));
   // 경리 = 특정 담당자에 속하지 않는 별도 계정. 화면 구성은 담당자와 거의 같지만,
   // 영업 관리에서는 모든 담당자의 건을 다 보고 금액 확인·입금 내역 수정까지 할 수 있어야 한다.
   document.getElementById('loginAccountingBtn').addEventListener('click', () => enterApp('accounting', null));
-  document.querySelectorAll('#loginButtons .login-btn[data-rep]').forEach(btn => {
-    btn.addEventListener('click', () => enterApp('staff', btn.dataset.rep));
-  });
+  document.getElementById('loginGeneralBtn').addEventListener('click', () => enterApp('staff', '일반'));
+
+  // 담당자별 로그인 버튼은 STAFF_LIST에서 그때그때 새로 그린다 — 영업 관리 > 담당자 관리
+  // 탭에서 담당자를 추가/수정/삭제하면 이 버튼 목록도 바로 따라서 바뀌어야 하기 때문이다.
+  // 관리자 계정과 같은 사람(OWNER_STAFF_NAME)은 이미 "관리자로 로그인" 버튼이 있으니 뺀다.
+  window.renderStaffLoginButtons = function(){
+    const generalBtn = document.getElementById('loginGeneralBtn');
+    document.querySelectorAll('#loginButtons .login-btn[data-rep]:not(#loginGeneralBtn)').forEach(b => b.remove());
+    STAFF_LIST.filter(name => name !== OWNER_STAFF_NAME).forEach(name => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'login-btn';
+      btn.dataset.rep = name;
+      btn.textContent = `${name}로 로그인`;
+      btn.addEventListener('click', () => enterApp('staff', name));
+      generalBtn.parentNode.insertBefore(btn, generalBtn);
+    });
+  };
+  window.renderStaffLoginButtons();
+
   document.getElementById('logoutBtn').addEventListener('click', doLogout);
   document.getElementById('sbLogoutBtn').addEventListener('click', doLogout);
   document.getElementById('menuBtn').addEventListener('click', toggleNavMenu);
