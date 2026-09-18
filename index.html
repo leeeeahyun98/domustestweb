@@ -55,9 +55,11 @@
     box-shadow:var(--shadow); padding:40px 36px; width:100%; max-width:380px;
     display:flex; flex-direction:column; gap:22px; align-items:center; text-align:center;
   }
+  .login-card[hidden]{ display:none; }
   .login-card .mark{ font-weight:700; font-size:12px; letter-spacing:.14em; color:var(--accent); text-transform:uppercase; }
   .login-card h1{ margin:0; font-size:24px; font-weight:700; }
   .login-card .sub{ font-size:13px; color:var(--text-faint); margin-top:-10px; }
+  #loginIdForm{ display:flex; flex-direction:column; gap:22px; width:100%; }
   .login-buttons{ display:flex; flex-direction:column; gap:12px; width:100%; }
   .login-btn{
     width:100%; padding:16px 18px; border-radius:12px; border:1px solid var(--border);
@@ -73,6 +75,21 @@
   .login-btn.accounting:hover{ background:rgba(10,155,108,.08); }
   .login-btn .role-icon{ font-size:17px; }
   .login-foot{ font-size:11px; color:var(--text-faint); }
+  .login-pw-input{
+    width:100%; padding:13px 14px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); font-size:15px; font-family:inherit;
+    text-align:left; box-sizing:border-box;
+  }
+  .login-pw-input:focus{ outline:none; border-color:var(--accent); background:var(--surface); }
+  .login-pw-error{ font-size:12.5px; color:var(--danger); font-weight:600; margin-top:-10px; }
+  .login-pw-error[hidden]{ display:none; }
+  .login-pw-wrap{ position:relative; width:100%; }
+  .login-pw-wrap .login-pw-input{ text-align:left; padding-right:42px; }
+  .login-eye-btn{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer;
+    color:var(--text-faint); padding:6px; display:flex; align-items:center; justify-content:center; border-radius:8px;
+  }
+  .login-eye-btn:hover{ color:var(--text-muted); background:var(--surface-3); }
 
   /* ---------------- app shell ---------------- */
   #appShell{ display:flex; flex-direction:row; height:100vh; width:100%; }
@@ -142,7 +159,11 @@
   .nav-btn .nav-ic svg{ display:block; }
 
   .role-indicator{ font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:6px; white-space:nowrap; }
-  .role-indicator b{ color:var(--text); }
+  .role-indicator b{ color:var(--text); display:inline-flex; align-items:center; gap:7px; font-weight:700; }
+  .role-face-icon{
+    display:inline-flex; align-items:center; justify-content:center; border-radius:50%; flex:none; color:#fff;
+    box-sizing:border-box;
+  }
   .logout-btn{
     width:100%; padding:8px 12px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2);
     color:var(--text); font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap;
@@ -180,13 +201,17 @@
   <div class="login-card" id="loginStepRole">
     <span class="mark">DOMUS</span>
     <h1>도무스 MES</h1>
-    <div class="sub">로그인할 계정을 선택하세요</div>
-    <div class="login-buttons" id="loginButtons">
-      <button class="login-btn owner" id="loginOwnerBtn">관리자로 로그인</button>
-      <button class="login-btn accounting" id="loginAccountingBtn">경리로 로그인</button>
-      <button class="login-btn general" data-rep="일반" id="loginGeneralBtn">일반으로 로그인</button>
-    </div>
-    <div class="login-foot">시안 데모 — 비밀번호 없이 계정만 선택합니다</div>
+    <form id="loginIdForm" autocomplete="on">
+      <input type="text" id="loginIdInput" name="username" class="login-pw-input" placeholder="아이디" autocomplete="username">
+      <div class="login-pw-wrap">
+        <input type="password" id="loginIdPwInput" name="password" class="login-pw-input" placeholder="비밀번호" autocomplete="current-password">
+        <button type="button" class="login-eye-btn" id="loginPwEyeBtn" aria-label="비밀번호 보기"></button>
+      </div>
+      <div class="login-pw-error" id="loginIdError" hidden></div>
+      <div class="login-buttons" id="loginButtons">
+        <button type="submit" class="login-btn owner" id="loginIdSubmitBtn">로그인</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -197,7 +222,7 @@
     <div class="sb-brand">DOMUS</div>
     <nav class="sb-nav" id="sbNav"></nav>
     <div class="sb-foot">
-      <div class="role-indicator">현재 역할: <b id="sbRoleIndicatorText">-</b></div>
+      <div class="role-indicator"><b id="sbRoleIndicatorText">-</b></div>
       <button class="logout-btn" id="sbLogoutBtn">로그아웃</button>
     </div>
   </div>
@@ -205,7 +230,7 @@
   <div class="nav-dropdown-backdrop" id="navBackdrop" hidden></div>
   <div class="nav-dropdown" id="navDropdown" hidden>
     <div class="nav-dropdown-head">
-      <div class="role-indicator">현재 역할: <b id="roleIndicatorText">-</b></div>
+      <div class="role-indicator"><b id="roleIndicatorText">-</b></div>
     </div>
     <nav class="nav-group" id="navGroup"></nav>
     <div class="nav-dropdown-foot">
@@ -322,7 +347,7 @@
       <div class="section-tabs" id="sectionTabs">
         <button class="section-tab active" data-sec="list">영업 내역</button>
         <button class="section-tab" data-sec="analysis">영업 분석</button>
-        <button class="section-tab" data-sec="staff">담당자 관리</button>
+        <button class="section-tab" data-sec="staff">사용자 관리</button>
       </div>
       <div class="tabs" id="analysisPeriodTabs" hidden>
         <button class="tab active" data-p="month">월별</button>
@@ -451,15 +476,6 @@
           </div>
         </div>
 
-        <div class="search-row" style="padding:14px 18px 0;">
-          <div class="search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchInput" placeholder="브랜드·발주처·점포명으로 검색">
-          </div>
-        </div>
-
-        <div class="client-panel" id="clientPanel"></div>
-
         <div class="table-scroll">
         <table>
           <thead>
@@ -487,11 +503,62 @@
     </div>
 
     <div class="section-panel" data-sec="staff" hidden>
-      <div class="toolbar">
-        <button class="add-btn" id="staffAddBtn" type="button">+ 새 담당자 추가</button>
+      <div class="stat-row" id="staffStatRow" style="margin-bottom:18px">
+        <div class="stat">
+          <div class="stat-top">
+            <span class="icon-badge gray"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <div class="label">전체 사용자</div>
+          </div>
+          <div class="num mono" id="staffStatTotal">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-top">
+            <span class="icon-badge blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.2 3.6-6.5 8-6.5s8 2.3 8 6.5"/></svg></span>
+            <div class="label">관리자</div>
+          </div>
+          <div class="num mono" id="staffStatOwner">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-top">
+            <span class="icon-badge gray"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.2 3.6-6.5 8-6.5s8 2.3 8 6.5"/></svg></span>
+            <div class="label">실무담당자</div>
+          </div>
+          <div class="num mono" id="staffStatStaff">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-top">
+            <span class="icon-badge green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.2 3.6-6.5 8-6.5s8 2.3 8 6.5"/></svg></span>
+            <div class="label">경영지원</div>
+          </div>
+          <div class="num mono" id="staffStatAccounting">-</div>
+        </div>
       </div>
-      <div class="card">
-        <div id="staffListBody"></div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="title-group">
+            <span class="icon-badge gray"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <h2>사용자 목록</h2>
+          </div>
+          <button class="add-btn" id="staffAddBtn" type="button">새 사용자 추가</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-num">No.</th>
+                <th class="col-avatar"></th>
+                <th>이름</th>
+                <th>소속부서</th>
+                <th>아이디</th>
+                <th>비밀번호</th>
+                <th>전화번호</th>
+                <th>역할</th>
+                <th class="col-manage"></th>
+              </tr>
+            </thead>
+            <tbody id="staffListBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -924,17 +991,40 @@
   // 이 단계 대상이 아니라 이전처럼 이 파일 안에서만 관리된다(다음 단계에서 연결 예정).
   const SUPABASE_URL = 'https://vafklakfnyyszzjppkeg.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhZmtsYWtmbnl5c3p6anBwa2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2MDc5ODEsImV4cCI6MjEwNTE4Mzk4MX0.kfieqrn6kHWaB6kaR5k9qyenndUaz6Gvz2R2Go17wh8';
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // 회사 네트워크나 광고 차단 확장 프로그램이 위 CDN 스크립트(jsdelivr)를 막으면
+  // window.supabase 자체가 없어서, 아래 createClient가 그냥 죽어버리면 이 IIFE 전체가
+  // 실행을 멈춰서 로그인 버튼을 포함한 화면 전체가 먹통이 된다 — 그래서 반드시 감싸서,
+  // 실패해도 나머지 화면(로그인 버튼 등)은 정상 작동하고, 서버가 필요한 기능만 안내 메시지를 띄운다.
+  let sb = null;
+  let supabaseLoadError = null;
+  try {
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      throw new Error('Supabase 라이브러리를 불러오지 못했습니다 (네트워크 차단 가능성)');
+    }
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (err) {
+    supabaseLoadError = err;
+    console.error('Supabase 초기화 실패', err);
+  }
 
   // 아직 로그인은 예전처럼 역할 버튼 방식이라, Supabase에는 "이재황" 계정으로 매번 자동
   // 로그인해서 RLS(로그인한 사람만 읽고 쓸 수 있다)를 통과시킨다 — 다음 단계(진짜 로그인)에서
   // 여기를 실제로 클릭한 사람 계정으로 로그인하도록 바꾼다.
   const SUPABASE_BOOTSTRAP_EMAIL = 'leejaehwang@domus-mes.test';
-  const SUPABASE_BOOTSTRAP_PASSWORD = 'domus1234!';
+  const SUPABASE_BOOTSTRAP_PASSWORD = 'domus0000!';
   let supabaseAuthReady = null;
   function ensureSupabaseAuth(){
+    if (supabaseLoadError) return Promise.reject(supabaseLoadError);
     if (!supabaseAuthReady) {
-      supabaseAuthReady = sb.auth.signInWithPassword({ email: SUPABASE_BOOTSTRAP_EMAIL, password: SUPABASE_BOOTSTRAP_PASSWORD });
+      // 로그인 자체가 실패하면(비밀번호가 안 맞는 등) 이후의 모든 저장·조회가 "조용히" 실패해서
+      // 원인을 알 수 없는 게 제일 위험하다 — 여기서 결과의 error를 반드시 확인해서, 실패하면
+      // 다음에 다시 시도할 수 있도록 캐시(supabaseAuthReady)도 지우고 에러를 던진다.
+      supabaseAuthReady = sb.auth.signInWithPassword({ email: SUPABASE_BOOTSTRAP_EMAIL, password: SUPABASE_BOOTSTRAP_PASSWORD })
+        .then(({ data, error }) => {
+          if (error) { supabaseAuthReady = null; throw error; }
+          return data;
+        })
+        .catch(err => { supabaseAuthReady = null; throw err; });
     }
     return supabaseAuthReady;
   }
@@ -943,11 +1033,75 @@
   // 관리되지만, 수주/일정 데이터는 DB에 rep_id(숫자)로 저장해야 해서 이름으로 찾아 변환해준다.
   let STAFF_ID_BY_NAME = {};
   let STAFF_NAME_BY_ID = {};
+  // 이름 -> 권한(관리자/경영지원/실무담당자/일반사용자) 매핑. 사용자 관리 화면에서 사람마다
+  // 역할을 지정하면, 로그인할 때 그 사람 이름 버튼이 어느 비밀번호(권한)를 확인할지 여기서 정해진다.
+  // 서버에서 아직 못 불러왔을 때(로그인 화면이 막 뜬 시점)를 위한 기본값 — STAFF_LIST의
+  // 기본값과 마찬가지로, 로그인 시도 즉시 loadStaffIdMap()이 실제 값으로 덮어쓴다.
+  let STAFF_ROLE_BY_NAME = { '이재황':'owner', '박매화':'accounting', '이현재':'staff', '박성중':'staff', '김선우':'staff' };
+  const ROLE_LABELS = { owner:'관리자', accounting:'경영지원', staff:'실무담당자', general:'일반사용자' };
+  // 얼굴 아이콘은 연한 배경 + 진한 아이콘으로, 사용자 관리 표의 역할 뱃지(글씨) 색과 통일한다.
+  // 관리자는 앱의 메인 파란색(--accent)과 같은 색으로, 일반사용자는 흰 바탕 + 회색으로
+  // (흰 배경이라 눈에 띄도록 옅은 테두리를 함께 준다).
+  const ROLE_COLORS = {
+    owner:      { bg:'#e8edfa',                fg:'#2953c4' },
+    accounting: { bg:'rgba(5,150,105,.14)',    fg:'#059669' },
+    staff:      { bg:'rgba(107,114,128,.16)',  fg:'#4b5563' },
+    general:    { bg:'#ffffff',                fg:'#6b7280', border:'#d7dbe1' },
+  };
+  let STAFF_DEPT_BY_NAME = {};
+  let STAFF_PHONE_BY_NAME = {};
+  // 역할별로 색이 다른 작은 얼굴(사람) 아이콘 — 사이드바 역할 표시, 사용자 목록, 사용자
+  // 비밀번호 변경 카드에서 모두 같은 모양을 쓴다.
+  function roleFaceIconHtml(roleKey, size){
+    const c = ROLE_COLORS[roleKey] || ROLE_COLORS.general;
+    const s = Math.round(size * 0.58);
+    const borderStyle = c.border ? `border:1px solid ${c.border};` : '';
+    return `<span class="role-face-icon" style="width:${size}px;height:${size}px;background:${c.bg};color:${c.fg};${borderStyle}">` +
+      `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.2 3.6-6.5 8-6.5s8 2.3 8 6.5"/></svg>` +
+      `</span>`;
+  }
+  // 비밀번호 눈(보기/숨기기) 아이콘 — 로그인 화면과 사용자 비밀번호 변경 카드가 함께 쓴다.
+  const EYE_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.4 21.4 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.4 21.4 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  // 이름 -> 로그인 아이디, (소문자로 맞춘) 로그인 아이디 -> 이름. 아이디는 이름과 별개로
+  // 사용자 관리 화면에서 바꿀 수 있고, 로그인할 때 이 아이디로 그 사람을 찾는다.
+  let STAFF_LOGIN_ID_BY_NAME = { '이재황':'이재황', '박매화':'박매화', '이현재':'이현재', '박성중':'박성중', '김선우':'김선우' };
+  let STAFF_NAME_BY_LOGIN_ID = { '이재황':'이재황', '박매화':'박매화', '이현재':'이현재', '박성중':'박성중', '김선우':'김선우' };
+  // 담당자 목록(STAFF_LIST)과 관리자 계정 이름(OWNER_STAFF_NAME)도 이제 staff 테이블이
+  // 단일 출처다 — 로그인할 때마다 여기서 다시 불러와 최신 상태로 맞춘다.
   async function loadStaffIdMap(){
-    const { data, error } = await sb.from('staff').select('id, name');
-    if (error) { console.error('담당자 목록 불러오기 실패', error); return; }
-    STAFF_ID_BY_NAME = {}; STAFF_NAME_BY_ID = {};
-    (data || []).forEach(s => { STAFF_ID_BY_NAME[s.name] = s.id; STAFF_NAME_BY_ID[s.id] = s.name; });
+    const { data, error } = await sb.from('staff').select('id, name, role, login_id, department, phone').order('id');
+    if (error) { console.error('사용자 목록 불러오기 실패', error); return; }
+    STAFF_ID_BY_NAME = {}; STAFF_NAME_BY_ID = {}; STAFF_ROLE_BY_NAME = {};
+    STAFF_LOGIN_ID_BY_NAME = {}; STAFF_NAME_BY_LOGIN_ID = {}; STAFF_DEPT_BY_NAME = {}; STAFF_PHONE_BY_NAME = {};
+    (data || []).forEach(s => {
+      STAFF_ID_BY_NAME[s.name] = s.id; STAFF_NAME_BY_ID[s.id] = s.name; STAFF_ROLE_BY_NAME[s.name] = s.role;
+      STAFF_LOGIN_ID_BY_NAME[s.name] = s.login_id;
+      STAFF_NAME_BY_LOGIN_ID[(s.login_id || '').toLowerCase()] = s.name;
+      STAFF_DEPT_BY_NAME[s.name] = s.department || '';
+      STAFF_PHONE_BY_NAME[s.name] = s.phone || '';
+    });
+    STAFF_LIST.length = 0;
+    STAFF_LIST.push(...(data || []).map(s => s.name));
+    const ownerRow = (data || []).find(s => s.role === 'owner');
+    if (ownerRow) OWNER_STAFF_NAME = ownerRow.name;
+  }
+
+  // 브랜드 마스터(brands 테이블)도 staff와 같은 방식으로 로그인 시 최신 상태로 불러온다.
+  function dbBrandToLocal(row){
+    return {
+      id: row.id, code: row.code, name: row.name,
+      client: row.client || '', clientCode: row.client_code || '',
+      aliases: row.aliases || [], clientAliases: row.client_aliases || [],
+    };
+  }
+  async function loadBrandsFromServer(){
+    const { data, error } = await sb.from('brands').select('*').order('id');
+    if (error) { console.error('브랜드 목록 불러오기 실패', error); return; }
+    BRAND_MASTER.length = 0;
+    BRAND_MASTER.push(...(data || []).map(dbBrandToLocal));
+    BRAND_ID_SEQ = BRAND_MASTER.reduce((max, b) => Math.max(max, b.id + 1), 1);
+    rebuildBrandMaps();
   }
 
   function dbOrderToLocal(row){
@@ -977,9 +1131,67 @@
   // 로그인 직후 한 번 서버에서 실제 수주/일정 데이터를 불러와 ORDERS/ORDER_TASKS를 채운다.
   // (배열 자체를 새로 만들지 않고 length=0 후 push하는 이유: 이미 다른 화면 코드가 이 배열을
   // 그대로 붙잡고 있는 경우가 있어서, 배열의 "정체성"은 유지하고 내용만 통째로 바꿔야 한다.)
+  // 일정표에서 등록하는 휴일/기타 사내 일정(custom_events)도 로그인할 때 서버에서 불러온다.
+  function dbCustomEventToLocal(row){
+    return { id: row.id, date: row.event_date, label: row.label, isHoliday: !!row.is_holiday };
+  }
+  async function loadCustomEventsFromServer(){
+    const { data, error } = await sb.from('custom_events').select('*').order('id');
+    if (error) { console.error('휴일/기타 일정 불러오기 실패', error); return; }
+    CUSTOM_EVENTS.length = 0;
+    CUSTOM_EVENTS.push(...(data || []).map(dbCustomEventToLocal));
+  }
+
+  // 매출 목표(revenue_targets)도 로그인할 때 서버에서 불러온다.
+  function dbRevenueTargetToLocal(row){
+    return { id: row.id, type: row.period_type, key: row.period_key, amount: Number(row.amount) };
+  }
+  async function loadRevenueTargetsFromServer(){
+    const { data, error } = await sb.from('revenue_targets').select('*').order('id');
+    if (error) { console.error('매출 목표 불러오기 실패', error); return; }
+    REVENUE_TARGETS.length = 0;
+    REVENUE_TARGETS.push(...(data || []).map(dbRevenueTargetToLocal));
+  }
+
+  // 매출 관리(REVENUE_ALL)는 그 자체로 서버에 저장하는 표가 아니라, 확정된 수주(ORDERS)에서
+  // 매번 다시 계산해서 채우는 화면이다 — 그래서 별도의 불러오기 함수 없이, 로그인 때마다
+  // ORDERS를 다 채운 뒤 이 함수로 확정된 건만 다시 매출로 반영한다.
+  function rebuildRevenueFromOrders(){
+    REVENUE_ALL.length = 0;
+    ORDERS.filter(o => o.confirmed && o.finalAmount != null).forEach(o => syncRevenueFromOrder(o));
+  }
+
+  // 발주처 마스터(clients 테이블)와, "이 브랜드로 들어온 적 있는 발주처" 후보 목록
+  // (brand_client_links 테이블)도 로그인할 때 서버에서 불러온다. 예전엔 둘 다 이 파일
+  // 안에서만 관리되는 임시 목록이라 새로고침하면 방금 추가한 발주처가 사라졌다.
+  function dbClientToLocal(row){
+    return { name: row.name, code: row.code || '' };
+  }
+  async function loadClientsFromServer(){
+    const { data, error } = await sb.from('clients').select('id, name, code').order('id');
+    if (error) { console.error('발주처 목록 불러오기 실패', error); return; }
+    CLIENT_MASTER.length = 0;
+    CLIENT_MASTER.push(...(data || []).map(dbClientToLocal));
+    rebuildClientMap();
+  }
+  async function loadBrandClientLinksFromServer(){
+    const { data, error } = await sb.from('brand_client_links').select('brand_code, client_name').order('id');
+    if (error) { console.error('브랜드-발주처 후보 목록 불러오기 실패', error); return; }
+    Object.keys(BRAND_CLIENT_LINKS).forEach(k => delete BRAND_CLIENT_LINKS[k]);
+    (data || []).forEach(row => {
+      if (!BRAND_CLIENT_LINKS[row.brand_code]) BRAND_CLIENT_LINKS[row.brand_code] = [];
+      if (!BRAND_CLIENT_LINKS[row.brand_code].includes(row.client_name)) BRAND_CLIENT_LINKS[row.brand_code].push(row.client_name);
+    });
+  }
+
   async function loadOrdersAndTasksFromServer(){
     await ensureSupabaseAuth();
     await loadStaffIdMap();
+    await loadBrandsFromServer();
+    await loadCustomEventsFromServer();
+    await loadRevenueTargetsFromServer();
+    await loadClientsFromServer();
+    await loadBrandClientLinksFromServer();
     const [ordersRes, tasksRes] = await Promise.all([
       sb.from('orders').select('*, payments(*)').order('id'),
       sb.from('order_tasks').select('*').order('id'),
@@ -990,16 +1202,15 @@
     ORDERS.push(...ordersRes.data.map(dbOrderToLocal));
     ORDER_TASKS.length = 0;
     ORDER_TASKS.push(...tasksRes.data.map(dbTaskToLocal));
+    rebuildRevenueFromOrders();
   }
 
   // 담당자 이름 목록 — 영업 관리 > 담당자 관리 탭에서 추가·수정·삭제하는 단일 출처다.
   // 예전엔 수주 등록/영업 관리/일정표가 각자 따로 이 이름 목록을 하드코딩해서 들고 있어서,
   // 담당자를 바꾸려면 코드를 여러 곳 고쳐야 했다 — 이제 여기 하나만 고치면 로그인 화면·
   // 담당자 선택·필터·일정표 담당 배정까지 전부 자동으로 반영된다.
-  let STAFF_LIST = ['이현재', '박성중', '이재황', '김선우'];
-  // 관리자 로그인은 곧 '이재황' 계정으로 들어가는 것과 같다 — 그래서 로그인 화면의
-  // 담당자별 로그인 버튼 목록에서는 이 이름만 빼고 보여준다(관리자 버튼이 이미 있으니까).
-  const OWNER_STAFF_NAME = '이재황';
+  let STAFF_LIST = ['이재황', '박매화', '이현재', '박성중', '김선우'];
+  let OWNER_STAFF_NAME = '이재황';
 
   /* 화면 곳곳에서 브랜드명·발주처명·점포명·작업내용 등 "사용자가 직접 입력한 텍스트"를
      innerHTML로 그려주는데, 이스케이프 없이 그대로 꽂으면 <script>나 <img onerror=...> 같은
@@ -1999,226 +2210,39 @@
     return ongoing ? `${nowWord}(${label}) ${suffix}` : `${label} ${suffix}`;
   }
 
-  const REVENUE_ALL = [
-    { date:'2024-10-05', brand:'파리바게뜨위탁가맹', client:'파리크라상', store:'부산본점', rep:'김선우', quoteAmount:6000000, finalAmount:5700000, confirmed:true, paid:true },
-    { date:'2024-10-06', brand:'다이나핏', client:'디엔아이', store:'울산지점', rep:'박성중', quoteAmount:1800000, finalAmount:1700000, confirmed:true, paid:true },
-    { date:'2024-10-18', brand:'BK', client:'삼립', store:'부천스퀘어점', rep:'박성중', quoteAmount:3700000, finalAmount:3500000, confirmed:true, paid:true },
-    { date:'2024-10-23', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'천안타운점', rep:'김선우', quoteAmount:9800000, finalAmount:9700000, confirmed:true, paid:true },
-    { date:'2024-10-24', brand:'다이나핏', client:'디엔아이', store:'전주신도시점', rep:'이현재', quoteAmount:4500000, finalAmount:4300000, confirmed:true, paid:true },
-    { date:'2024-10-26', brand:'노르디스크', client:'키예노', store:'대구플라자점', rep:'이현재', quoteAmount:2100000, finalAmount:2000000, confirmed:true, paid:true },
-    { date:'2024-11-02', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'창원2호점', rep:'김선우', quoteAmount:7900000, finalAmount:7400000, confirmed:true, paid:true },
-    { date:'2024-11-04', brand:'PC', client:'PC', store:'창원본점', rep:'이재황', quoteAmount:600000, finalAmount:600000, confirmed:true, paid:true },
-    { date:'2024-11-06', brand:'금강제화', client:'금강제화', store:'청주플라자점', rep:'이현재', quoteAmount:8100000, finalAmount:7600000, confirmed:true, paid:true },
-    { date:'2024-11-09', brand:'K2', client:'우리가디자인', store:'안산지점', rep:'이현재', quoteAmount:6200000, finalAmount:5700000, confirmed:true, paid:false },
-    { date:'2024-11-09', brand:'폴바셋', client:'다우', store:'부산본점', rep:'박성중', quoteAmount:3600000, finalAmount:3500000, confirmed:true, paid:true },
-    { date:'2024-11-11', brand:'스타벅스', client:'SB-본사', store:'대전중앙점', rep:'박성중', quoteAmount:7800000, finalAmount:7600000, confirmed:true, paid:true },
-    { date:'2024-11-23', brand:'모비스', client:'에이플러스', store:'고양본점', rep:'박성중', quoteAmount:2800000, finalAmount:2700000, confirmed:true, paid:true },
-    { date:'2024-11-25', brand:'와키윌리', client:'공간디자인', store:'대전스퀘어점', rep:'이현재', quoteAmount:2200000, finalAmount:2100000, confirmed:true, paid:true },
-    { date:'2024-11-26', brand:'K2', client:'우리가디자인', store:'안양아울렛점', rep:'박성중', quoteAmount:3200000, finalAmount:3200000, confirmed:true, paid:true },
-    { date:'2024-12-02', brand:'PC', client:'PC', store:'부천중앙점', rep:'이현재', quoteAmount:1200000, finalAmount:1100000, confirmed:true, paid:true },
-    { date:'2024-12-05', brand:'BK', client:'삼립', store:'성남신도시점', rep:'김선우', quoteAmount:3100000, finalAmount:3000000, confirmed:true, paid:true },
-    { date:'2024-12-07', brand:'K2', client:'우리가디자인', store:'고양지점', rep:'이현재', quoteAmount:2100000, finalAmount:2000000, confirmed:true, paid:false },
-    { date:'2024-12-08', brand:'K2', client:'우리가디자인', store:'평택역점', rep:'김선우', quoteAmount:7400000, finalAmount:7300000, confirmed:true, paid:true },
-    { date:'2024-12-08', brand:'K2', client:'우리가디자인', store:'창원아울렛점', rep:'이현재', quoteAmount:8800000, finalAmount:8300000, confirmed:true, paid:true },
-    { date:'2024-12-11', brand:'리나스', client:'LN', store:'전주타운점', rep:'이재황', quoteAmount:1100000, finalAmount:1000000, confirmed:true, paid:true },
-    { date:'2024-12-11', brand:'커버낫', client:'공간디자인', store:'평택타운점', rep:'박성중', quoteAmount:4400000, finalAmount:4300000, confirmed:true, paid:true },
-    { date:'2024-12-19', brand:'스타벅스', client:'SB-본사', store:'대구시장점', rep:'이현재', quoteAmount:11700000, finalAmount:10800000, confirmed:true, paid:true },
-    { date:'2024-12-30', brand:'금강제화', client:'금강제화', store:'고양시장점', rep:'김선우', quoteAmount:6600000, finalAmount:6500000, confirmed:true, paid:true },
-    { date:'2025-01-01', brand:'금강제화', client:'금강제화', store:'수원2호점', rep:'이재황', quoteAmount:4100000, finalAmount:3900000, confirmed:true, paid:true },
-    { date:'2025-01-05', brand:'커버낫', client:'공간디자인', store:'평택사거리점', rep:'이재황', quoteAmount:1700000, finalAmount:1700000, confirmed:true, paid:true },
-    { date:'2025-01-11', brand:'노르디스크', client:'키예노', store:'대구중앙점', rep:'이현재', quoteAmount:1600000, finalAmount:1600000, confirmed:true, paid:true },
-    { date:'2025-01-14', brand:'PC', client:'PC', store:'안양아울렛점', rep:'이재황', quoteAmount:2900000, finalAmount:2900000, confirmed:true, paid:true },
-    { date:'2025-01-18', brand:'BK', client:'삼립', store:'제주본점', rep:'이현재', quoteAmount:2800000, finalAmount:2800000, confirmed:true, paid:false },
-    { date:'2025-01-23', brand:'쉐이크쉑', client:'쉐이크쉑', store:'대전2호점', rep:'박성중', quoteAmount:7600000, finalAmount:7500000, confirmed:true, paid:true },
-    { date:'2025-01-26', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'대구중앙점', rep:'이재황', quoteAmount:3800000, finalAmount:3700000, confirmed:true, paid:true },
-    { date:'2025-01-29', brand:'Lee', client:'공간디자인', store:'전주2호점', rep:'김선우', quoteAmount:3300000, finalAmount:3000000, confirmed:true, paid:true },
-    { date:'2025-01-30', brand:'K2', client:'우리가디자인', store:'대구아울렛점', rep:'김선우', quoteAmount:5900000, finalAmount:5500000, confirmed:true, paid:true },
-    { date:'2025-02-07', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'포항신도시점', rep:'이재황', quoteAmount:5100000, finalAmount:4900000, confirmed:true, paid:true },
-    { date:'2025-02-09', brand:'폴바셋', client:'다우', store:'인천사거리점', rep:'이재황', quoteAmount:1800000, finalAmount:1700000, confirmed:true, paid:true },
-    { date:'2025-02-12', brand:'K2', client:'우리가디자인', store:'용인스퀘어점', rep:'김선우', quoteAmount:7800000, finalAmount:7200000, confirmed:true, paid:true },
-    { date:'2025-02-18', brand:'BK', client:'삼립', store:'창원아울렛점', rep:'이현재', quoteAmount:2800000, finalAmount:2600000, confirmed:true, paid:true },
-    { date:'2025-02-20', brand:'스타벅스', client:'SB-본사', store:'인천타운점', rep:'이현재', quoteAmount:4200000, finalAmount:4100000, confirmed:true, paid:true },
-    { date:'2025-02-23', brand:'금강제화', client:'금강제화', store:'고양사거리점', rep:'김선우', quoteAmount:6800000, finalAmount:6700000, confirmed:true, paid:true },
-    { date:'2025-03-03', brand:'스타벅스', client:'SB-본사', store:'전주지점', rep:'박성중', quoteAmount:5300000, finalAmount:5100000, confirmed:true, paid:true },
-    { date:'2025-03-16', brand:'파리바게뜨위탁가맹', client:'파리크라상', store:'창원역점', rep:'이현재', quoteAmount:6800000, finalAmount:6700000, confirmed:true, paid:true },
-    { date:'2025-03-17', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'안양지점', rep:'이재황', quoteAmount:11400000, finalAmount:11200000, confirmed:true, paid:true },
-    { date:'2025-03-18', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'부산본점', rep:'박성중', quoteAmount:7800000, finalAmount:7200000, confirmed:true, paid:true },
-    { date:'2025-03-19', brand:'파스쿠찌', client:'PAS', store:'창원역점', rep:'박성중', quoteAmount:2200000, finalAmount:2100000, confirmed:true, paid:false },
-    { date:'2025-03-21', brand:'파스쿠찌', client:'PAS', store:'부천지점', rep:'김선우', quoteAmount:2200000, finalAmount:2200000, confirmed:true, paid:true },
-    { date:'2025-04-14', brand:'스타벅스', client:'SB-본사', store:'성남2호점', rep:'이재황', quoteAmount:13000000, finalAmount:12500000, confirmed:true, paid:true },
-    { date:'2025-04-17', brand:'노르디스크', client:'키예노', store:'울산시장점', rep:'박성중', quoteAmount:6000000, finalAmount:5900000, confirmed:true, paid:true },
-    { date:'2025-04-21', brand:'아이더', client:'우리가디자인', store:'광주시장점', rep:'이재황', quoteAmount:1500000, finalAmount:1500000, confirmed:true, paid:true },
-    { date:'2025-04-22', brand:'스타벅스', client:'SB-본사', store:'인천플라자점', rep:'김선우', quoteAmount:6900000, finalAmount:6700000, confirmed:true, paid:true },
-    { date:'2025-04-26', brand:'스타벅스', client:'SB-본사', store:'부천타운점', rep:'이현재', quoteAmount:11200000, finalAmount:11100000, confirmed:true, paid:false },
-    { date:'2025-04-29', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'창원중앙점', rep:'이재황', quoteAmount:5400000, finalAmount:5400000, confirmed:true, paid:true },
-    { date:'2025-05-02', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'안산플라자점', rep:'김선우', quoteAmount:11400000, finalAmount:11300000, confirmed:true, paid:true },
-    { date:'2025-05-05', brand:'노르디스크', client:'키예노', store:'고양시장점', rep:'이재황', quoteAmount:1800000, finalAmount:1700000, confirmed:true, paid:true },
-    { date:'2025-05-22', brand:'금강제화', client:'금강제화', store:'대전본점', rep:'박성중', quoteAmount:7300000, finalAmount:7100000, confirmed:true, paid:true },
-    { date:'2025-05-22', brand:'Lee', client:'공간디자인', store:'안산본점', rep:'이재황', quoteAmount:3400000, finalAmount:3400000, confirmed:true, paid:false },
-    { date:'2025-05-25', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'안산중앙점', rep:'이현재', quoteAmount:7900000, finalAmount:7400000, confirmed:true, paid:true },
-    { date:'2025-05-25', brand:'모비스', client:'에이플러스', store:'창원지점', rep:'이재황', quoteAmount:2800000, finalAmount:2800000, confirmed:true, paid:true },
-    { date:'2025-05-28', brand:'K2', client:'우리가디자인', store:'고양타운점', rep:'김선우', quoteAmount:8400000, finalAmount:7900000, confirmed:true, paid:true },
-    { date:'2025-06-09', brand:'베이커리팩토리', client:'삼립', store:'수원스퀘어점', rep:'이재황', quoteAmount:2600000, finalAmount:2600000, confirmed:true, paid:true },
-    { date:'2025-06-10', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'평택지점', rep:'박성중', quoteAmount:11500000, finalAmount:10900000, confirmed:true, paid:true },
-    { date:'2025-06-12', brand:'K2', client:'우리가디자인', store:'수원중앙점', rep:'이재황', quoteAmount:8900000, finalAmount:8800000, confirmed:true, paid:true },
-    { date:'2025-06-13', brand:'스타벅스', client:'SB-본사', store:'천안신도시점', rep:'이재황', quoteAmount:14900000, finalAmount:14200000, confirmed:true, paid:true },
-    { date:'2025-06-14', brand:'금강제화', client:'금강제화', store:'안산중앙점', rep:'박성중', quoteAmount:9500000, finalAmount:9400000, confirmed:true, paid:false },
-    { date:'2025-06-20', brand:'쉐이크쉑', client:'쉐이크쉑', store:'서울지점', rep:'김선우', quoteAmount:3000000, finalAmount:2900000, confirmed:true, paid:true },
-    { date:'2025-06-30', brand:'배스킨라빈스', client:'BR', store:'전주스퀘어점', rep:'이현재', quoteAmount:3600000, finalAmount:3300000, confirmed:true, paid:true },
-    { date:'2025-07-02', brand:'커버낫', client:'공간디자인', store:'인천타운점', rep:'박성중', quoteAmount:4600000, finalAmount:4500000, confirmed:true, paid:true },
-    { date:'2025-07-05', brand:'Lee', client:'공간디자인', store:'김해사거리점', rep:'박성중', quoteAmount:2500000, finalAmount:2500000, confirmed:true, paid:true },
-    { date:'2025-07-07', brand:'금강제화', client:'금강제화', store:'광주지점', rep:'이재황', quoteAmount:9600000, finalAmount:9400000, confirmed:true, paid:false },
-    { date:'2025-07-12', brand:'PC', client:'PC', store:'부산신도시점', rep:'박성중', quoteAmount:1700000, finalAmount:1600000, confirmed:true, paid:true },
-    { date:'2025-07-17', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'용인플라자점', rep:'김선우', quoteAmount:11400000, finalAmount:11100000, confirmed:true, paid:true },
-    { date:'2025-07-20', brand:'Lee', client:'공간디자인', store:'안양아울렛점', rep:'김선우', quoteAmount:2100000, finalAmount:2000000, confirmed:true, paid:false },
-    { date:'2025-07-20', brand:'K2', client:'우리가디자인', store:'고양역점', rep:'이현재', quoteAmount:3400000, finalAmount:3400000, confirmed:true, paid:true },
-    { date:'2025-07-24', brand:'K2', client:'우리가디자인', store:'울산아울렛점', rep:'박성중', quoteAmount:4500000, finalAmount:4200000, confirmed:true, paid:true },
-    { date:'2025-07-27', brand:'K2', client:'우리가디자인', store:'고양신도시점', rep:'박성중', quoteAmount:4500000, finalAmount:4200000, confirmed:true, paid:true },
-    { date:'2025-08-02', brand:'아이더', client:'우리가디자인', store:'제주신도시점', rep:'박성중', quoteAmount:1100000, finalAmount:1000000, confirmed:true, paid:true },
-    { date:'2025-08-03', brand:'파리바게뜨 직영', client:'파리크라상', store:'청주2호점', rep:'이현재', quoteAmount:5900000, finalAmount:5500000, confirmed:true, paid:true },
-    { date:'2025-08-05', brand:'다이나핏', client:'디엔아이', store:'안양지점', rep:'이재황', quoteAmount:1900000, finalAmount:1800000, confirmed:true, paid:true },
-    { date:'2025-08-06', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'부천지점', rep:'이재황', quoteAmount:11600000, finalAmount:11400000, confirmed:true, paid:true },
-    { date:'2025-08-21', brand:'스타벅스', client:'SB-본사', store:'청주사거리점', rep:'김선우', quoteAmount:12300000, finalAmount:12000000, confirmed:true, paid:true },
-    { date:'2025-09-09', brand:'PS', client:'PS', store:'성남본점', rep:'박성중', quoteAmount:1200000, finalAmount:1100000, confirmed:true, paid:true },
-    { date:'2025-09-09', brand:'노르디스크', client:'키예노', store:'대전본점', rep:'박성중', quoteAmount:5300000, finalAmount:5200000, confirmed:true, paid:true },
-    { date:'2025-09-12', brand:'노르디스크', client:'키예노', store:'김해본점', rep:'이재황', quoteAmount:2800000, finalAmount:2700000, confirmed:true, paid:true },
-    { date:'2025-09-14', brand:'K2', client:'우리가디자인', store:'대구중앙점', rep:'이재황', quoteAmount:5800000, finalAmount:5300000, confirmed:true, paid:true },
-    { date:'2025-09-15', brand:'스타벅스', client:'SB-본사', store:'대구지점', rep:'박성중', quoteAmount:7600000, finalAmount:7100000, confirmed:true, paid:true },
-    { date:'2025-09-15', brand:'아이더', client:'우리가디자인', store:'성남중앙점', rep:'이재황', quoteAmount:3900000, finalAmount:3700000, confirmed:true, paid:false },
-    { date:'2025-09-27', brand:'모비스', client:'에이플러스', store:'서울아울렛점', rep:'이현재', quoteAmount:3400000, finalAmount:3200000, confirmed:true, paid:true },
-    { date:'2025-09-28', brand:'K2', client:'우리가디자인', store:'청주아울렛점', rep:'이현재', quoteAmount:4400000, finalAmount:4200000, confirmed:true, paid:true },
-    { date:'2025-10-01', brand:'K2', client:'우리가디자인', store:'고양본점', rep:'이재황', quoteAmount:6700000, finalAmount:6500000, confirmed:true, paid:true },
-    { date:'2025-10-05', brand:'폴바셋', client:'다우', store:'김해본점', rep:'박성중', quoteAmount:2800000, finalAmount:2800000, confirmed:true, paid:false },
-    { date:'2025-10-12', brand:'BK', client:'삼립', store:'울산타운점', rep:'이현재', quoteAmount:1500000, finalAmount:1400000, confirmed:true, paid:true },
-    { date:'2025-10-15', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'용인중앙점', rep:'이현재', quoteAmount:8800000, finalAmount:8100000, confirmed:true, paid:true },
-    { date:'2025-10-17', brand:'파리바게뜨 직영', client:'파리크라상', store:'안산플라자점', rep:'박성중', quoteAmount:6900000, finalAmount:6500000, confirmed:true, paid:false },
-    { date:'2025-10-19', brand:'스타벅스', client:'SB-본사', store:'전주사거리점', rep:'박성중', quoteAmount:6800000, finalAmount:6600000, confirmed:true, paid:true },
-    { date:'2025-10-22', brand:'노르디스크', client:'키예노', store:'김해지점', rep:'이현재', quoteAmount:5900000, finalAmount:5800000, confirmed:true, paid:true },
-    { date:'2025-10-23', brand:'다이나핏', client:'디엔아이', store:'평택사거리점', rep:'박성중', quoteAmount:5700000, finalAmount:5500000, confirmed:true, paid:true },
-    { date:'2025-10-28', brand:'스타벅스', client:'SB-본사', store:'포항타운점', rep:'박성중', quoteAmount:9100000, finalAmount:8400000, confirmed:true, paid:true },
-    { date:'2025-10-31', brand:'노르디스크', client:'키예노', store:'성남사거리점', rep:'김선우', quoteAmount:4300000, finalAmount:4100000, confirmed:true, paid:true },
-    { date:'2025-11-04', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'대구스퀘어점', rep:'이현재', quoteAmount:9600000, finalAmount:8900000, confirmed:true, paid:true },
-    { date:'2025-11-04', brand:'금강제화', client:'금강제화', store:'안산스퀘어점', rep:'이현재', quoteAmount:4400000, finalAmount:4100000, confirmed:true, paid:true },
-    { date:'2025-11-06', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'평택신도시점', rep:'이현재', quoteAmount:4500000, finalAmount:4300000, confirmed:true, paid:true },
-    { date:'2025-11-11', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'포항중앙점', rep:'박성중', quoteAmount:4200000, finalAmount:3900000, confirmed:true, paid:true },
-    { date:'2025-11-12', brand:'금강제화', client:'금강제화', store:'제주지점', rep:'이현재', quoteAmount:9400000, finalAmount:8900000, confirmed:true, paid:true },
-    { date:'2025-11-25', brand:'커버낫', client:'공간디자인', store:'부천사거리점', rep:'김선우', quoteAmount:2800000, finalAmount:2700000, confirmed:true, paid:true },
-    { date:'2025-11-28', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'고양지점', rep:'이현재', quoteAmount:7900000, finalAmount:7300000, confirmed:true, paid:true },
-    { date:'2025-11-29', brand:'스타벅스', client:'SB-본사', store:'수원사거리점', rep:'박성중', quoteAmount:5700000, finalAmount:5600000, confirmed:true, paid:true },
-    { date:'2025-12-03', brand:'K2', client:'우리가디자인', store:'대전본점', rep:'이재황', quoteAmount:5500000, finalAmount:5100000, confirmed:true, paid:false },
-    { date:'2025-12-04', brand:'다이나핏', client:'디엔아이', store:'천안중앙점', rep:'이현재', quoteAmount:3100000, finalAmount:3000000, confirmed:true, paid:true },
-    { date:'2025-12-05', brand:'파리바게뜨위탁가맹', client:'파리크라상', store:'용인지점', rep:'김선우', quoteAmount:7600000, finalAmount:7500000, confirmed:true, paid:true },
-    { date:'2025-12-07', brand:'쉐이크쉑', client:'쉐이크쉑', store:'포항신도시점', rep:'이현재', quoteAmount:8700000, finalAmount:8700000, confirmed:true, paid:true },
-    { date:'2025-12-14', brand:'K2', client:'우리가디자인', store:'부산신도시점', rep:'이현재', quoteAmount:8400000, finalAmount:8000000, confirmed:true, paid:true },
-    { date:'2025-12-17', brand:'금강제화', client:'금강제화', store:'포항사거리점', rep:'이재황', quoteAmount:5400000, finalAmount:5300000, confirmed:true, paid:true },
-    { date:'2025-12-18', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'수원아울렛점', rep:'이재황', quoteAmount:6700000, finalAmount:6600000, confirmed:true, paid:true },
-    { date:'2025-12-20', brand:'K2', client:'우리가디자인', store:'평택지점', rep:'이재황', quoteAmount:6500000, finalAmount:6100000, confirmed:true, paid:true },
-    { date:'2025-12-30', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'안산본점', rep:'김선우', quoteAmount:10200000, finalAmount:10000000, confirmed:true, paid:false },
-    { date:'2026-01-02', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'안양플라자점', rep:'이재황', quoteAmount:5500000, finalAmount:5500000, confirmed:true, paid:true },
-    { date:'2026-01-14', brand:'금강제화', client:'금강제화', store:'제주역점', rep:'이현재', quoteAmount:5900000, finalAmount:5700000, confirmed:true, paid:false },
-    { date:'2026-01-14', brand:'BK', client:'삼립', store:'인천지점', rep:'김선우', quoteAmount:2200000, finalAmount:2100000, confirmed:true, paid:true },
-    { date:'2026-01-15', brand:'노르디스크', client:'키예노', store:'포항타운점', rep:'박성중', quoteAmount:5900000, finalAmount:5500000, confirmed:true, paid:true },
-    { date:'2026-01-16', brand:'다이나핏', client:'디엔아이', store:'제주신도시점', rep:'김선우', quoteAmount:4900000, finalAmount:4600000, confirmed:true, paid:true },
-    { date:'2026-01-18', brand:'모비스', client:'에이플러스', store:'고양중앙점', rep:'박성중', quoteAmount:3700000, finalAmount:3600000, confirmed:true, paid:true },
-    { date:'2026-01-19', brand:'K2', client:'우리가디자인', store:'서울중앙점', rep:'박성중', quoteAmount:5000000, finalAmount:4900000, confirmed:true, paid:true },
-    { date:'2026-01-20', brand:'쉐이크쉑', client:'쉐이크쉑', store:'대전플라자점', rep:'박성중', quoteAmount:4700000, finalAmount:4300000, confirmed:true, paid:true },
-    { date:'2026-01-20', brand:'노르디스크', client:'키예노', store:'용인스퀘어점', rep:'박성중', quoteAmount:5800000, finalAmount:5800000, confirmed:true, paid:true },
-    { date:'2026-01-23', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'부산사거리점', rep:'이재황', quoteAmount:3400000, finalAmount:3200000, confirmed:true, paid:false },
-    { date:'2026-01-24', brand:'스타벅스', client:'SB-본사', store:'서울스퀘어점', rep:'김선우', quoteAmount:11200000, finalAmount:10400000, confirmed:true, paid:true },
-    { date:'2026-02-04', brand:'다이나핏', client:'디엔아이', store:'포항아울렛점', rep:'박성중', quoteAmount:3100000, finalAmount:3100000, confirmed:true, paid:true },
-    { date:'2026-02-04', brand:'커버낫', client:'공간디자인', store:'대전아울렛점', rep:'박성중', quoteAmount:1700000, finalAmount:1700000, confirmed:true, paid:true },
-    { date:'2026-02-08', brand:'K2', client:'우리가디자인', store:'울산2호점', rep:'박성중', quoteAmount:8700000, finalAmount:8400000, confirmed:true, paid:true },
-    { date:'2026-02-08', brand:'스타벅스', client:'SB-본사', store:'부천아울렛점', rep:'이현재', quoteAmount:13700000, finalAmount:13600000, confirmed:true, paid:true },
-    { date:'2026-02-12', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'전주시장점', rep:'김선우', quoteAmount:7100000, finalAmount:6600000, confirmed:true, paid:true },
-    { date:'2026-02-13', brand:'BK', client:'삼립', store:'용인사거리점', rep:'이재황', quoteAmount:1400000, finalAmount:1300000, confirmed:true, paid:true },
-    { date:'2026-02-19', brand:'금강제화', client:'금강제화', store:'수원아울렛점', rep:'이재황', quoteAmount:7300000, finalAmount:7000000, confirmed:true, paid:true },
-    { date:'2026-02-20', brand:'파리바게뜨위탁가맹', client:'파리크라상', store:'성남신도시점', rep:'이현재', quoteAmount:6600000, finalAmount:6400000, confirmed:true, paid:false },
-    { date:'2026-02-21', brand:'노르디스크', client:'키예노', store:'안산플라자점', rep:'김선우', quoteAmount:4500000, finalAmount:4300000, confirmed:true, paid:true },
-    { date:'2026-02-26', brand:'파스쿠찌', client:'PAS', store:'천안지점', rep:'이현재', quoteAmount:1600000, finalAmount:1600000, confirmed:true, paid:true },
-    { date:'2026-02-27', brand:'다이나핏', client:'디엔아이', store:'제주본점', rep:'박성중', quoteAmount:3300000, finalAmount:3300000, confirmed:true, paid:true },
-    { date:'2026-03-09', brand:'Lee', client:'공간디자인', store:'서울역점', rep:'김선우', quoteAmount:1700000, finalAmount:1600000, confirmed:true, paid:true },
-    { date:'2026-03-11', brand:'다이나핏', client:'디엔아이', store:'포항시장점', rep:'김선우', quoteAmount:4900000, finalAmount:4700000, confirmed:true, paid:true },
-    { date:'2026-03-14', brand:'쉐이크쉑', client:'쉐이크쉑', store:'김해역점', rep:'김선우', quoteAmount:4900000, finalAmount:4700000, confirmed:true, paid:true },
-    { date:'2026-03-24', brand:'금강제화', client:'금강제화', store:'서울지점', rep:'박성중', quoteAmount:8500000, finalAmount:8100000, confirmed:true, paid:true },
-    { date:'2026-03-26', brand:'노르디스크', client:'키예노', store:'평택사거리점', rep:'김선우', quoteAmount:3400000, finalAmount:3200000, confirmed:true, paid:true },
-    { date:'2026-03-27', brand:'K2', client:'우리가디자인', store:'대구2호점', rep:'박성중', quoteAmount:2400000, finalAmount:2400000, confirmed:true, paid:true },
-    { date:'2026-03-28', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'대구타운점', rep:'이현재', quoteAmount:10600000, finalAmount:9800000, confirmed:true, paid:true },
-    { date:'2026-04-02', brand:'파스쿠찌', client:'PAS', store:'수원시장점', rep:'이재황', quoteAmount:2000000, finalAmount:2000000, confirmed:true, paid:false },
-    { date:'2026-04-04', brand:'스타벅스', client:'SB-본사', store:'광주타운점', rep:'김선우', quoteAmount:8400000, finalAmount:8000000, confirmed:true, paid:true },
-    { date:'2026-04-11', brand:'스타벅스', client:'SB-본사', store:'안양역점', rep:'이재황', quoteAmount:6900000, finalAmount:6700000, confirmed:true, paid:true },
-    { date:'2026-04-13', brand:'금강제화', client:'금강제화', store:'용인시장점', rep:'이재황', quoteAmount:7000000, finalAmount:6900000, confirmed:true, paid:true },
-    { date:'2026-04-15', brand:'금강제화', client:'금강제화', store:'포항아울렛점', rep:'김선우', quoteAmount:7200000, finalAmount:7100000, confirmed:true, paid:true },
-    { date:'2026-04-15', brand:'노르디스크', client:'키예노', store:'서울타운점', rep:'이현재', quoteAmount:4900000, finalAmount:4600000, confirmed:true, paid:true },
-    { date:'2026-04-21', brand:'폴바셋', client:'다우', store:'청주2호점', rep:'이재황', quoteAmount:3300000, finalAmount:3200000, confirmed:true, paid:true },
-    { date:'2026-04-22', brand:'금강제화', client:'금강제화', store:'안양중앙점', rep:'이재황', quoteAmount:2900000, finalAmount:2800000, confirmed:true, paid:false },
-    { date:'2026-04-26', brand:'BK', client:'삼립', store:'김해지점', rep:'박성중', quoteAmount:3400000, finalAmount:3300000, confirmed:true, paid:true },
-    { date:'2026-04-27', brand:'BK', client:'삼립', store:'평택중앙점', rep:'이재황', quoteAmount:2000000, finalAmount:1900000, confirmed:true, paid:true },
-    { date:'2026-05-03', brand:'커버낫', client:'공간디자인', store:'용인지점', rep:'이현재', quoteAmount:3800000, finalAmount:3500000, confirmed:true, paid:true },
-    { date:'2026-05-04', brand:'BK', client:'삼립', store:'전주스퀘어점', rep:'이현재', quoteAmount:2500000, finalAmount:2400000, confirmed:true, paid:true },
-    { date:'2026-05-04', brand:'파리바게뜨 직영', client:'파리크라상', store:'대구본점', rep:'김선우', quoteAmount:5900000, finalAmount:5900000, confirmed:true, paid:true },
-    { date:'2026-05-10', brand:'PS', client:'PS', store:'천안아울렛점', rep:'이재황', quoteAmount:1800000, finalAmount:1700000, confirmed:true, paid:true },
-    { date:'2026-05-16', brand:'K2', client:'우리가디자인', store:'청주본점', rep:'이재황', quoteAmount:3300000, finalAmount:3200000, confirmed:true, paid:true },
-    { date:'2026-05-25', brand:'K2', client:'우리가디자인', store:'제주본점', rep:'이재황', quoteAmount:6400000, finalAmount:6000000, confirmed:true, paid:true },
-    { date:'2026-05-25', brand:'K2', client:'우리가디자인', store:'김해플라자점', rep:'김선우', quoteAmount:3500000, finalAmount:3300000, confirmed:true, paid:true },
-    { date:'2026-06-11', brand:'쉐이크쉑', client:'쉐이크쉑', store:'천안스퀘어점', rep:'이재황', quoteAmount:5000000, finalAmount:4600000, confirmed:true, paid:true },
-    { date:'2026-06-12', brand:'BK', client:'삼립', store:'청주2호점', rep:'박성중', quoteAmount:3000000, finalAmount:2800000, confirmed:true, paid:true },
-    { date:'2026-06-12', brand:'노르디스크', client:'키예노', store:'부산사거리점', rep:'박성중', quoteAmount:2600000, finalAmount:2500000, confirmed:true, paid:true },
-    { date:'2026-06-13', brand:'커버낫', client:'공간디자인', store:'포항아울렛점', rep:'이현재', quoteAmount:4300000, finalAmount:4300000, confirmed:true, paid:true },
-    { date:'2026-06-15', brand:'커버낫', client:'공간디자인', store:'광주타운점', rep:'이현재', quoteAmount:4400000, finalAmount:4400000, confirmed:true, paid:true },
-    { date:'2026-06-16', brand:'금강제화', client:'금강제화', store:'서울스퀘어점', rep:'박성중', quoteAmount:7600000, finalAmount:7500000, confirmed:true, paid:true },
-    { date:'2026-06-21', brand:'쉐이크쉑', client:'쉐이크쉑', store:'용인타운점', rep:'박성중', quoteAmount:7700000, finalAmount:7300000, confirmed:true, paid:true },
-    { date:'2026-06-22', brand:'커버낫', client:'공간디자인', store:'대구시장점', rep:'김선우', quoteAmount:2100000, finalAmount:2000000, confirmed:true, paid:true },
-    { date:'2026-06-24', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'대전중앙점', rep:'김선우', quoteAmount:5500000, finalAmount:5400000, confirmed:true, paid:true },
-    { date:'2026-06-25', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'광주플라자점', rep:'이현재', quoteAmount:10000000, finalAmount:9600000, confirmed:true, paid:true },
-    { date:'2026-06-25', brand:'K2', client:'우리가디자인', store:'안양2호점', rep:'김선우', quoteAmount:4100000, finalAmount:4100000, confirmed:true, paid:false },
-    { date:'2026-06-30', brand:'와키윌리', client:'공간디자인', store:'부산사거리점', rep:'이현재', quoteAmount:2600000, finalAmount:2500000, confirmed:true, paid:true },
-    { date:'2026-07-11', brand:'모비스', client:'에이플러스', store:'성남중앙점', rep:'박성중', quoteAmount:2400000, finalAmount:2400000, confirmed:true, paid:true },
-    { date:'2026-07-11', brand:'K2', client:'우리가디자인', store:'천안신도시점', rep:'이현재', quoteAmount:5000000, finalAmount:4800000, confirmed:true, paid:true },
-    { date:'2026-07-11', brand:'아이더', client:'우리가디자인', store:'성남플라자점', rep:'이재황', quoteAmount:4000000, finalAmount:3900000, confirmed:true, paid:true },
-    { date:'2026-07-13', brand:'K2', client:'우리가디자인', store:'성남본점', rep:'박성중', quoteAmount:7400000, finalAmount:7200000, confirmed:true, paid:true },
-    { date:'2026-07-15', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'평택아울렛점', rep:'이재황', quoteAmount:11300000, finalAmount:10400000, confirmed:true, paid:true },
-    { date:'2026-07-16', brand:'와키윌리', client:'공간디자인', store:'김해사거리점', rep:'이재황', quoteAmount:2900000, finalAmount:2700000, confirmed:true, paid:true },
-    { date:'2026-07-17', brand:'스타벅스', client:'SB-본사', store:'울산지점', rep:'김선우', quoteAmount:12700000, finalAmount:12500000, confirmed:true, paid:false },
-    { date:'2026-07-17', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'안양스퀘어점', rep:'이재황', quoteAmount:6200000, finalAmount:5900000, confirmed:true, paid:true },
-    { date:'2026-07-19', brand:'커버낫', client:'공간디자인', store:'청주지점', rep:'김선우', quoteAmount:1200000, finalAmount:1200000, confirmed:true, paid:true },
-    { date:'2026-07-21', brand:'PC', client:'PC', store:'창원사거리점', rep:'박성중', quoteAmount:2200000, finalAmount:2100000, confirmed:true, paid:true },
-    { date:'2026-07-22', brand:'K2', client:'우리가디자인', store:'천안역점', rep:'이현재', quoteAmount:3600000, finalAmount:3500000, confirmed:true, paid:true },
-    { date:'2026-07-30', brand:'BK', client:'삼립', store:'대전사거리점', rep:'김선우', quoteAmount:1900000, finalAmount:1800000, confirmed:true, paid:false },
-    { date:'2026-08-07', brand:'금강제화', client:'금강제화', store:'대구스퀘어점', rep:'이재황', quoteAmount:9700000, finalAmount:9200000, confirmed:true, paid:true },
-    { date:'2026-08-09', brand:'커버낫', client:'공간디자인', store:'고양본점', rep:'이현재', quoteAmount:3400000, finalAmount:3400000, confirmed:true, paid:false },
-    { date:'2026-08-13', brand:'PS', client:'PS', store:'청주중앙점', rep:'이현재', quoteAmount:1200000, finalAmount:1100000, confirmed:true, paid:true },
-    { date:'2026-08-14', brand:'커버낫', client:'공간디자인', store:'수원스퀘어점', rep:'박성중', quoteAmount:4300000, finalAmount:4000000, confirmed:true, paid:true },
-    { date:'2026-08-17', brand:'스타벅스', client:'SB-본사', store:'울산지점', rep:'박성중', quoteAmount:6400000, finalAmount:6400000, confirmed:true, paid:true },
-    { date:'2026-08-22', brand:'쉐이크쉑', client:'쉐이크쉑', store:'부산신도시점', rep:'박성중', quoteAmount:6200000, finalAmount:5900000, confirmed:true, paid:false },
-    { date:'2026-08-23', brand:'리나스', client:'LN', store:'포항지점', rep:'이재황', quoteAmount:1000000, finalAmount:1000000, confirmed:true, paid:false },
-    { date:'2026-08-23', brand:'금강제화', client:'금강제화', store:'부산시장점', rep:'김선우', quoteAmount:6900000, finalAmount:6500000, confirmed:true, paid:false, payments:[{date:'2026-08-25', amount:3000000, memo:'계약금'}] },
-    { date:'2026-08-28', brand:'파리바게뜨', client:'PB 파리바게뜨', store:'제주신도시점', rep:'이재황', quoteAmount:5400000, finalAmount:5200000, confirmed:true, paid:false },
-    { date:'2026-09-05', brand:'커피앳웍스', client:'C@W', store:'김해플라자점', rep:'이현재', quoteAmount:1500000, finalAmount:1500000, confirmed:true, paid:true, payments:[{date:'2026-09-06', amount:800000, memo:'계약금'},{date:'2026-09-12', amount:700000, memo:'잔금'}] },
-    { date:'2026-09-06', brand:'K2', client:'우리가디자인', store:'부천역점', rep:'이재황', quoteAmount:7600000, finalAmount:7600000, confirmed:true, paid:false },
-    { date:'2026-09-10', brand:'K2', client:'우리가디자인', store:'평택본점', rep:'김선우', quoteAmount:2800000, finalAmount:2700000, confirmed:true, paid:false, payments:[{date:'2026-09-12', amount:900000, memo:'계약금'}] },
-  ].map((r, i) => ({ ...r, id: i }));
+  // 예전에 화면 모양을 보여주기 위해 넣어뒀던 가짜 예시 매출 데이터(224건) — 이제 실제 수주가
+  // 확정될 때마다 syncRevenueFromOrder()가 채워주는 방식만 쓰기로 하면서 전부 비웠다.
+  const REVENUE_ALL = [];
   resyncBrandClient(REVENUE_ALL);
 
   // 영업 관리(수주)와 매출 관리(매출)를 이어주는 연결 고리 — 수주가 확정되면(수주액 입력) 매출 관리에도
   // 그 건이 자동으로 생기고, 반대로 확정을 취소하면(수주액 삭제) 매출 관리에서도 빠진다.
   // 입금 내역(payments)은 같은 배열을 그대로 공유해서, 영업 관리에서 입금을 추가·수정·삭제하면
   // 매출 관리 쪽 입금 현황·미수금도 별도 동기화 코드 없이 항상 똑같이 반영된다.
-  // 기존에 이미 들어있던 매출 관리 예시 데이터(위 REVENUE_ALL 224건)는 그대로 두고,
-  // 이 연동은 지금부터 새로 확정되는 수주부터 적용된다.
   // 납품 일정이 여러 건인 수주 건의 매출 인식 시점 — 일부만 납품된 시점에 전체 금액을 매출로
   // 당겨 잡지 않고, "전부 납품이 끝나는" 가장 마지막 납품일에 전체 금액을 한 번에 매출로 잡는다.
+  // o.next는 납품 일정이 아직 없으면 "—"(플레이스홀더 문자열)로 채워지는데, 이건 "값이 없다"는
+  // 뜻이지 실제 날짜가 아니다. 실제 날짜 형식인지("YYYY-MM-DD")까지 확인해서 걸러낸다.
+  function isValidIsoDateStr(s){
+    return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  }
+  // 납품 일정(일정표)이 하나라도 있으면 그중 가장 마지막(전체 납품 완료) 날짜를 반환하고,
+  // 없으면 null을 반환한다. 예전엔 여기서 수주일(orderDate)로 대신 채워 넣었는데, 그러면
+  // "수주만 확정하고 아직 납품일은 안 정한 건"까지 그 수주일 기준으로 매출에 잡혀버려서
+  // 매출 인식 시점이 부정확해졌다 — 매출 기준을 "납품일이 정해진 건만 매출로 잡는다"로
+  // 명확히 하기로 해서, 납품일이 없으면 아예 매출로 잡지 않는다(아래 syncRevenueFromOrder 참고).
   function orderLastDeliveryDate(o){
-    const dates = ORDER_TASKS.filter(t => t.orderId === o.id).map(t => t.date).filter(Boolean).sort();
+    const dates = ORDER_TASKS.filter(t => t.orderId === o.id).map(t => t.date).filter(isValidIsoDateStr).sort();
     if (dates.length) return dates[dates.length - 1];
-    return o.next || o.orderDate;
+    return isValidIsoDateStr(o.next) ? o.next : null;
   }
   function syncRevenueFromOrder(o){
     if (!Array.isArray(o.payments)) o.payments = [];
     const idx = REVENUE_ALL.findIndex(r => r.linkedOrderId === o.id);
-    if (o.confirmed && o.finalAmount != null) {
-      // 매출은 수주일이 아니라 실제 납품일 기준으로 잡되, 납품이 여러 건이면 그중 가장 마지막
-      // (전체 납품 완료) 날짜를 기준으로 전체 금액을 한 번에 잡는다.
-      const revDate = orderLastDeliveryDate(o);
+    const revDate = orderLastDeliveryDate(o);
+    // 수주 확정 + 확정금액 입력 + 납품일 확정, 이 세 가지가 다 돼야 비로소 매출로 잡는다.
+    // 납품일이 아직 없는 확정 건은 "매출 대기"로 보고 매출 관리에는 나타나지 않는다.
+    if (o.confirmed && o.finalAmount != null && revDate) {
       if (idx >= 0) {
         const r = REVENUE_ALL[idx];
         r.date = revDate; r.brand = o.brand; r.client = o.client; r.store = o.store;
@@ -2784,6 +2808,7 @@
     .unpaid-toggle{
       padding:7px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
       color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;
+      margin-left:auto;
     }
     .unpaid-toggle.active{ background:var(--text); border-color:var(--text); color:#fff; }
     /* 파란색(강조색)이면 엑셀 업로드 버튼(회색 아웃라인)과 나란히 있을 때 이게 더 중요한
@@ -3199,7 +3224,7 @@
     .icon-badge{ width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex:none; color:var(--text-faint); }
     .icon-badge.blue{ color:var(--accent); }
     .icon-badge.gray{ color:var(--text-faint); }
-    .icon-badge.green{ color:var(--text-faint); }
+    .icon-badge.green{ color:#059669; }
     .icon-badge svg{ display:block; }
 
     /* 브랜드/담당자별 수주 현황 — 가로 막대 순위 리스트 */
@@ -3248,44 +3273,74 @@
     .bar-track{ height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
     .bar-fill{ height:100%; background:var(--accent); border-radius:4px; }
 
-    /* 담당자 관리 탭 — 브랜드 관리 화면과 같은 카드/행 스타일을 그대로 가져와 통일한다. */
+    /* 사용자 관리 탭 — 영업 내역 등 다른 화면의 표(패널/헤더/행 버튼)와 완전히 같은
+       .panel/.panel-head/.table-scroll/.row-btn 스타일을 그대로 써서 화면마다 디자인이
+       다르게 느껴지던 것을 통일한다. 여기서 새로 필요한 것은 이름 옆에 붙는 역할 배지 정도다. */
     .page-sub{ font-size:12.5px; color:var(--text-faint); line-height:1.6; }
     .toolbar{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
     .add-btn{
-      background:var(--accent); color:#fff; border:none; border-radius:8px;
-      padding:10px 18px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;
+      background:var(--surface); color:var(--text-muted); border:1px solid var(--border); border-radius:8px;
+      padding:7px 16px; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;
     }
-    #staffListBody{ background:var(--surface); }
-    .staff-row{ display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border); }
-    .staff-row:last-child{ border-bottom:none; }
-    .staff-avatar{
-      width:34px; height:34px; border-radius:50%; background:var(--accent-soft); color:var(--accent);
-      display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex:none;
+    .add-btn:hover{ background:var(--surface-2); }
+    .row-btn.save-row.rolepw-save-btn{ background:var(--accent-soft); border-color:var(--accent-soft); color:var(--accent); }
+    .row-btn.save-row.rolepw-save-btn:hover{ filter:brightness(0.97); }
+    .role-badge{
+      display:inline-flex; align-items:center; font-size:11.5px; font-weight:700; padding:3px 9px;
+      border-radius:20px; background:var(--surface-2); color:var(--text-muted);
     }
-    .staff-name{ font-size:13.5px; font-weight:700; flex:1; min-width:0; }
-    .staff-name .owner-tag{ font-size:11px; font-weight:600; color:var(--text-faint); margin-left:6px; }
-    .staff-row-actions{ display:flex; gap:4px; flex:none; }
-    .staff-empty{ padding:30px 18px; text-align:center; font-size:13px; color:var(--text-faint); }
-    /* 브랜드 관리 화면의 "수정" 링크 버튼과 동일한 스타일 — 이 페이지(영업 관리) 스코프에는
-       이 클래스 스타일이 없어서 지금까지 기본 버튼 모양(테두리 있는 회색 버튼)으로 보였다. */
-    .edit-link{ font-size:12px; font-weight:700; color:var(--accent); background:none; border:none; cursor:pointer; padding:6px 8px; font-family:inherit; flex:none; }
-    .edit-link:hover{ background:var(--accent-soft); border-radius:6px; }
+    .role-badge.role-owner{ background:#e8edfa; color:#2953c4; }
+    .role-badge.role-accounting{ background:rgba(5,150,105,.12); color:#059669; }
+    .role-badge.role-staff{ background:rgba(107,114,128,.14); color:#4b5563; }
+    .role-badge.role-general{ background:#ffffff; color:#6b7280; border:1px solid #d7dbe1; }
+    .owner-tag{ font-size:11px; font-weight:600; color:var(--text-faint); margin-left:6px; }
+    .staff-empty td{ padding:30px 18px; text-align:center; font-size:13px; color:var(--text-faint); }
+    .col-avatar{ width:40px; }
+    .role-face-icon{
+      display:inline-flex; align-items:center; justify-content:center; border-radius:50%; flex:none; color:#fff;
+      box-sizing:border-box;
+    }
+    .staff-edit-name-input{
+      border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px;
+      padding:7px 9px; font-size:13px; font-family:inherit; width:100%; box-sizing:border-box;
+    }
+    .staff-edit-role-select{
+      border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px;
+      padding:7px 9px; font-size:13px; font-family:inherit; width:100%; box-sizing:border-box;
+    }
+    .staff-delete-confirm-text{ font-size:12px; color:var(--text-muted); font-weight:600; }
 
-    .staff-row.editing{ padding:16px 18px; background:var(--surface-2); flex-direction:column; align-items:stretch; gap:12px; }
-    .staff-edit-field{ display:flex; flex-direction:column; gap:6px; }
-    .staff-edit-field label{ font-size:11px; font-weight:700; color:var(--text-faint); }
-    .staff-edit-field input{
+    /* 사용자 관리 탭 안, 관리자만 보는 권한별(관리자/경영지원/실무담당자/일반사용자) 로그인
+       비밀번호 변경 카드 — 관리자 비밀번호를 먼저 확인해야만 바뀌도록 서버(RPC)에서도
+       한 번 더 확인하지만, 화면에서도 같은 흐름으로 안내한다. 목록 표 바로 아래, 같은
+       .panel 스타일로 붙여서 하나의 화면처럼 이어지게 한다. */
+    .rolepw-card{ margin-top:16px; }
+    .rolepw-body{ padding:18px; display:flex; flex-direction:column; gap:14px; }
+    .rolepw-title{ font-size:13.5px; font-weight:700; }
+    .rolepw-hint{ font-size:12px; color:var(--text-faint); margin-top:-8px; }
+    .rolepw-card .field{ display:flex; flex-direction:column; gap:6px; max-width:280px; }
+    .rolepw-card .field label{ font-size:11px; font-weight:700; color:var(--text-faint); }
+    .rolepw-card .field input{
       border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px;
       padding:8px 10px; font-size:13px; font-family:inherit; width:100%; box-sizing:border-box;
     }
-    .staff-edit-actions{ display:flex; justify-content:flex-end; gap:8px; align-items:center; }
-    .staff-delete-confirm-text{ font-size:12px; color:var(--text-muted); font-weight:600; margin-right:auto; }
-    .staff-btn{
-      padding:8px 16px; border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer;
-      border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit;
+    .rolepw-rows{ display:flex; flex-direction:column; gap:10px; }
+    .rolepw-row{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-top:10px; border-top:1px solid var(--border);
     }
-    .staff-btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
-    .staff-btn.danger-outline{ border-color:var(--danger); color:var(--danger); background:none; }
+    .rolepw-row:first-child{ border-top:none; padding-top:0; }
+    .rolepw-row-label{ font-size:12.5px; font-weight:700; width:96px; flex:none; display:flex; align-items:center; gap:7px; }
+    .rolepw-row input{
+      border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:8px;
+      padding:8px 10px; font-size:13px; font-family:inherit; width:100%; box-sizing:border-box;
+    }
+    .rolepw-pw-wrap{ position:relative; flex:1; min-width:140px; display:flex; }
+    .rolepw-pw-wrap input{ padding-right:36px; }
+    .rolepw-eye-btn{
+      position:absolute; right:4px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer;
+      color:var(--text-faint); padding:5px; display:flex; align-items:center; justify-content:center; border-radius:6px;
+    }
+    .rolepw-eye-btn:hover{ color:var(--text-muted); background:var(--surface-2); }
   `;
 
   const orderFormCSS = `
@@ -3672,6 +3727,7 @@
     .unpaid-toggle{
       padding:7px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
       color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;
+      margin-left:auto;
     }
     .unpaid-toggle.active{ background:var(--text); border-color:var(--text); color:#fff; }
     .tabs{ display:flex; gap:6px; overflow-x:auto; max-width:100%; min-width:0; -webkit-overflow-scrolling:touch; }
@@ -3919,7 +3975,7 @@
     .icon-badge{ width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex:none; color:var(--text-faint); }
     .icon-badge.blue{ color:var(--accent); }
     .icon-badge.gray{ color:var(--text-faint); }
-    .icon-badge.green{ color:var(--text-faint); }
+    .icon-badge.green{ color:#059669; }
     .icon-badge.red{ color:var(--danger); }
     .icon-badge svg{ display:block; }
 
@@ -4316,20 +4372,10 @@
     const MIN_OPTIONS = [0,30];
 
     // brand: 브랜드 코드만 표시 · store: 점포명 · client: 발주처(브랜드 마스터 참고해서 "코드 이름" 형식으로 표시)
-    const rawEvents = [
-      { offset:-4, time:'09:00', brand:'PB', store:'이수점', client:'파리바게뜨', task:'제과 쇼케이스', material:'금속', category:[], qty:8, op:'김선우', solo:false, done:true },
-      { offset:-3, time:'11:00', brand:'K2', store:'브레드가든 목동점', client:'우리가디자인', task:'진열대 리뉴얼', material:'목재', category:[], qty:20, op:'이재황', solo:false, done:true },
-      { offset:-1, time:'14:00', brand:'BK', store:'하늘제과 판교점', client:'삼립', task:'진열 선반', material:'목재', category:[], qty:'단납', op:'박성중', solo:true, done:false },
-      { offset:0, time:'10:00', brand:'ND', store:'미도인베이커리 본점', client:'키예노', task:'비말차단 진열대', material:'금속', category:[], qty:5, op:'이현재', solo:true, done:false },
-      { offset:0, time:'11:00', brand:'CG', store:'카페드마르쉐 잠실점', client:'디자인에너지', task:'도어틀, 몰딩', material:'목재', category:['디자인에너지'], qty:60, op:'박성중', solo:false, done:false },
-      { offset:0, time:'16:00', brand:'CG', store:'카페드마르쉐 잠실점', client:'디자인에너지', task:'냉장 쇼케이스', material:'금속', category:[], qty:20, op:'김선우', solo:false, done:false },
-      { offset:2, time:'09:30', brand:'KK', store:'라뜰리에드빵 강남점', client:'공간디자인', task:'우드프레임', material:'목재', category:['공간디자인'], qty:10, op:'이재황', solo:false, done:false },
-      { offset:4, time:'13:00', brand:'K2', store:'브레드팜 송파점', client:'우리가디자인', task:'진열대 3type', material:'목재', category:[], qty:20, op:'김선우', solo:false, done:false },
-      { offset:6, time:'11:00', brand:'K2', store:'브레드팜 강남점', client:'우리가디자인', task:'진열대 3type', material:'목재', category:[], qty:200, op:'이현재', solo:false, done:false },
-      { offset:9, time:'10:00', brand:'PB', store:'대전역점', client:'파리바게뜨', task:'대형 쇼케이스 세트', material:'금속', category:[], qty:100, op:'박성중', solo:false, done:false },
-      { offset:13, time:'14:00', brand:'BK', store:'하늘제과 분당점', client:'삼립', task:'진열 선반', material:'목재', category:[], qty:'단납', op:'박성중', solo:true, done:false },
-      { offset:18, time:'10:00', brand:'CG', store:'카페드마르쉐 수원점', client:'디자인에너지', task:'냉장 쇼케이스', material:'금속', category:[], qty:300, op:'김선우', solo:false, done:false },
-    ];
+    // 예전에 화면 모양을 보여주기 위해 넣어뒀던 가짜 예시 일정 — 이제 실제 데이터(ORDER_TASKS)만
+    // 쓰기로 하면서 전부 비웠다. 로그인 여부와 상관없이 항상 달력에 섞여 보이던 데이터라,
+    // 서버 쪽 수주 데이터를 다 지워도 일정표에 내용이 남아있는 것처럼 보였던 원인이 이거였다.
+    const rawEvents = [];
 
     // 표시용 라벨: "브랜드코드 점포명(발주처/담당자)" — 발주처는 브랜드 마스터를 참고해 "코드 이름" 형식으로 통일한다.
     function eventLabel(ev){ return escapeHtml(`${ev.brand}${ev.store}(${clientShortCode(ev.client)}/${ev.op})`); }
@@ -4624,7 +4670,15 @@
             </div>
           `;
           if (c.auto) { modalBody.appendChild(card); return; }
-          card.querySelector('.del-btn').addEventListener('click', () => {
+          card.querySelector('.del-btn').addEventListener('click', async () => {
+            try {
+              const { error } = await sb.from('custom_events').delete().eq('id', c.id);
+              if (error) throw error;
+            } catch (err) {
+              console.error('휴일/기타 일정 삭제 실패', err);
+              showToast('삭제하지 못했어요. 다시 시도해주세요.', 'error');
+              return;
+            }
             CUSTOM_EVENTS = CUSTOM_EVENTS.filter(x => x.id !== c.id);
             renderCalendar();
             openDay(date, dayEvents, customEventsByDate(ymd(date)));
@@ -4841,11 +4895,23 @@
     root.getElementById('addCloseBtn').addEventListener('click', closeAddModal);
     root.getElementById('addCancelBtn').addEventListener('click', closeAddModal);
     addOverlay.addEventListener('click', (e) => { if (e.target === addOverlay) closeAddModal(); });
-    root.getElementById('addSaveBtn').addEventListener('click', () => {
+    root.getElementById('addSaveBtn').addEventListener('click', async () => {
       const date = root.getElementById('addDate').value;
       const label = root.getElementById('addLabel').value.trim();
       if (!date || !label) { showToast('날짜와 내용을 모두 입력해주세요.', 'error'); return; }
-      CUSTOM_EVENTS.push({ id:'c' + Date.now(), date, label, isHoliday: addType === 'holiday' });
+      let inserted;
+      try {
+        const { data, error } = await sb.from('custom_events').insert({
+          event_date: date, label, is_holiday: addType === 'holiday',
+        }).select().single();
+        if (error) throw error;
+        inserted = data;
+      } catch (err) {
+        console.error('휴일/기타 일정 등록 실패', err);
+        showToast('등록하지 못했어요. 다시 시도해주세요.', 'error');
+        return;
+      }
+      CUSTOM_EVENTS.push(dbCustomEventToLocal(inserted));
       closeAddModal();
       renderCalendar();
     });
@@ -4888,7 +4954,6 @@
     let pendingDeleteId = null;
 
     let role = appRole === 'owner' ? 'owner' : 'staff';
-    let query = '';
     let fBrand = '전체', fClient = '전체', fRep = '전체';
     let fUnpaidOnly = false;
     // 매출 관리의 "내역"과 동일하게 — 개별 월 하나만 골라보는 필터 대신,
@@ -4988,7 +5053,6 @@
 
     function filtered(){
       return orders.filter(o => {
-        if (query && !(o.brand + o.client + o.store).includes(query)) return false;
         if (fBrand !== '전체' && o.brand !== fBrand) return false;
         if (fClient !== '전체' && o.client !== fClient) return false;
         if (fRep !== '전체' && o.rep !== fRep) return false;
@@ -5283,6 +5347,18 @@
             if (linkedTasksForNext.length === 1 && isValidIsoDate(o.next)) {
               const { error: taskUpdateErr } = await sb.from('order_tasks').update({ task_date: o.next }).eq('id', linkedTasksForNext[0].id);
               if (taskUpdateErr) throw taskUpdateErr;
+            } else if (linkedTasksForNext.length === 0 && isValidIsoDate(o.next)) {
+              // 수주 등록 때 납품 일정을 하나도 안 넣고, 영업 관리에서 처음으로 납품일을 입력한
+              // 경우 — 이전에는 여기서 아무 일도 안 일어나서 일정표에 영영 나타나지 않았다.
+              // 이제 이 경우엔 새 납품 일정을 하나 만들어서 일정표에도 바로 반영되게 한다.
+              const { data: newTaskRow, error: taskInsertErr } = await sb.from('order_tasks').insert({
+                order_id: o.id, task_date: o.next, task_time: '09:00',
+                brand: (o.brand || '').split(' ')[0], store: o.store, client: o.client,
+                task: '납품', material: '', qty: '-', rep_id: STAFF_ID_BY_NAME[o.rep] || null,
+                solo: false, done: false,
+              }).select().single();
+              if (taskInsertErr) throw taskInsertErr;
+              ORDER_TASKS.push(dbTaskToLocal(newTaskRow));
             }
           } catch (err) {
             console.error('수주 수정 실패', err);
@@ -5539,66 +5615,6 @@
       });
     }
     root.getElementById('payModalClose').addEventListener('click', closePayModal);
-
-    function renderClientPanel(){
-      const panel = root.getElementById('clientPanel');
-      if (!query) { panel.classList.remove('show'); panel.innerHTML=''; return; }
-      const matches = filtered();
-      if (!matches.length) { panel.classList.remove('show'); panel.innerHTML=''; return; }
-
-      const rep = matches[0];
-      const history = matches;
-      const upcoming = matches.filter(o => o.next && o.next !== '—');
-
-      panel.classList.add('show');
-      panel.innerHTML = `
-        <div class="head">
-          <div>
-            <div class="name">${escapeHtml(rep.client)}</div>
-            <div class="brand-line">브랜드: ${escapeHtml(rep.brand)} · 검색결과 ${matches.length}건</div>
-          </div>
-          <button class="close" id="clientClose">✕</button>
-        </div>
-        <div class="client-grid">
-          <div class="client-block">
-            <h3>기본정보</h3>
-            <div class="kv"><span class="k">담당자</span><span class="v">${rep.rep}</span></div>
-            <div class="kv"><span class="k">최근 수주일</span><span class="v">${dispDate(rep.orderDate)}</span></div>
-            <div class="kv"><span class="k">전체 건수</span><span class="v">${history.length}건</span></div>
-          </div>
-          <div class="client-block">
-            <h3>다가오는 일정 (${upcoming.length}건)</h3>
-            ${upcoming.length ? upcoming.map(o => `
-              <div class="inprogress-row">
-                <span>${escapeHtml(o.store)}${o.urgent ? ' <span class="urgent-tag">긴급</span>' : ''}</span>
-                <span>${dispDate(o.next)}</span>
-              </div>
-            `).join('') : '<div class="inprogress-row"><span>예정된 일정 없음</span></div>'}
-            <div style="margin-top:10px">
-              <button class="more-link" id="historyMore">전체 이력 ${history.length}건 더보기 ▾</button>
-            </div>
-          </div>
-        </div>
-      `;
-      panel.querySelector('#clientClose').addEventListener('click', () => {
-        query = '';
-        root.getElementById('searchInput').value = '';
-        render();
-      });
-      panel.querySelector('#historyMore').addEventListener('click', (e) => {
-        const btn = e.currentTarget;
-        const already = panel.querySelector('.history-full');
-        if (already) { already.remove(); btn.textContent = `전체 이력 ${history.length}건 더보기 ▾`; return; }
-        const box = document.createElement('div');
-        box.className = 'history-full';
-        box.style.marginTop = '10px';
-        box.innerHTML = history.map(o => `
-          <div class="inprogress-row"><span>${dispDate(o.orderDate)} · ${escapeHtml(o.store)}${o.urgent ? ' <span class="urgent-tag">긴급</span>' : ''}</span><span>${renderAmount(o.amount)}</span></div>
-        `).join('');
-        panel.querySelector('.client-block:last-child').appendChild(box);
-        btn.textContent = '접기 ▴';
-      });
-    }
 
     /* =========================================================
        영업 분석 (관리자 전용) — 수주(ORDERS) 데이터만 기준으로 집계한다.
@@ -5890,17 +5906,12 @@
       root.getElementById('salesStatOrderAmountCmp').innerHTML = cmpHtml(orderAmount, prevOrderAmount);
 
       renderRows(list);
-      renderClientPanel();
       renderSalesAnalysis();
 
       const groupCount = new Set(list.map(listGroupKey)).size;
       root.getElementById('salesTableFoot').textContent = `${LIST_PERIOD_LABEL[listPeriod]} 기준 · ${groupCount}개 그룹 · 브랜드: ${fBrand} · 발주처: ${fClient} · 담당자: ${fRep} · 총 ${list.length}건`;
     }
 
-    root.getElementById('searchInput').addEventListener('input', (e) => {
-      query = e.target.value.trim();
-      render();
-    });
     root.getElementById('filterBrand').addEventListener('change', (e) => { fBrand = e.target.value; render(); });
     root.getElementById('filterClient').addEventListener('change', (e) => { fClient = e.target.value; render(); });
     root.getElementById('filterRep').addEventListener('change', (e) => { fRep = e.target.value; render(); });
@@ -5937,10 +5948,12 @@
       });
     }
 
-    // ===== 담당자 관리 탭 =====
+    // ===== 사용자 관리 탭 =====
     // STAFF_LIST(모듈 스코프)를 직접 관리한다 — 여기서 추가/수정/삭제하면 수주 등록의
-    // 담당자 선택, 이 화면의 담당자 필터, 로그인 화면의 담당자별 버튼까지 전부 같은 배열을
+    // 담당자 선택, 이 화면의 담당자 필터, 로그인 화면의 사람별 버튼까지 전부 같은 배열을
     // 보고 있어서 refreshAllPages()/renderStaffLoginButtons() 한 번으로 다 같이 갱신된다.
+    // 다른 화면(영업 내역 등)과 똑같은 표(.panel/.table-scroll/.row-btn) 구조를 그대로 써서
+    // 화면마다 디자인이 다르게 느껴지지 않게 통일했다.
     const staffListBody = root.getElementById('staffListBody');
     const staffAddBtn = root.getElementById('staffAddBtn');
     let staffEditingIdx = null;
@@ -5953,66 +5966,149 @@
       if (typeof window.renderStaffLoginButtons === 'function') window.renderStaffLoginButtons();
     }
 
+    // 관리자가 한 명도 안 남는 상황(실수로 마지막 관리자를 다른 역할로 바꾸거나 삭제)을
+    // 막는다 — 그러면 아무도 사용자 관리·비밀번호 변경 화면에 다시 들어올 수 없게 되기 때문.
+    function isLastOwner(name){
+      const owners = STAFF_LIST.filter(n => STAFF_ROLE_BY_NAME[n] === 'owner');
+      return owners.length === 1 && owners[0] === name;
+    }
+
     function renderStaffRowView(name, idx){
-      const row = document.createElement('div');
-      row.className = 'staff-row';
+      const row = document.createElement('tr');
       const isOwner = name === OWNER_STAFF_NAME;
+      const roleKey = STAFF_ROLE_BY_NAME[name] || 'staff';
+      const roleLabel = ROLE_LABELS[roleKey] || '실무담당자';
+      const loginId = STAFF_LOGIN_ID_BY_NAME[name] || '';
+      const dept = STAFF_DEPT_BY_NAME[name] || '';
+      const phone = STAFF_PHONE_BY_NAME[name] || '';
       row.innerHTML = `
-        <div class="staff-avatar">${escapeHtml(name.slice(0,1))}</div>
-        <div class="staff-name">${escapeHtml(name)}${isOwner ? '<span class="owner-tag">· 관리자 계정</span>' : ''}</div>
-        <div class="staff-row-actions">
-          <button type="button" class="edit-link">수정</button>
-        </div>
+        <td class="mono col-num">${idx + 1}</td>
+        <td class="col-avatar">${roleFaceIconHtml(roleKey, 28)}</td>
+        <td>${escapeHtml(name)}${isOwner ? '<span class="owner-tag">· 관리자 계정</span>' : ''}</td>
+        <td>${dept ? escapeHtml(dept) : '<span style="color:var(--text-faint)">-</span>'}</td>
+        <td class="mono">${escapeHtml(loginId)}</td>
+        <td><span style="color:var(--text-faint)">••••••</span></td>
+        <td class="mono">${phone ? escapeHtml(phone) : '<span style="color:var(--text-faint)">-</span>'}</td>
+        <td><span class="role-badge role-${roleKey}">${roleLabel}</span></td>
+        <td class="col-manage">
+          <button type="button" class="row-btn edit-row">수정</button>
+        </td>
       `;
-      row.querySelector('.edit-link').addEventListener('click', () => {
+      row.querySelector('.edit-row').addEventListener('click', () => {
         staffEditingIdx = idx; staffAddingNew = false; staffPendingDeleteIdx = null; renderStaffTab();
       });
       return row;
     }
 
     function renderStaffRowEdit(name, idx, isNew){
-      const row = document.createElement('div');
-      row.className = 'staff-row editing';
+      const row = document.createElement('tr');
+      row.className = 'editing';
       function paint(){
         const confirmingDelete = !isNew && staffPendingDeleteIdx === idx;
+        const currentRole = STAFF_ROLE_BY_NAME[name] || 'staff';
+        const currentLoginId = STAFF_LOGIN_ID_BY_NAME[name] || '';
+        const currentDept = STAFF_DEPT_BY_NAME[name] || '';
+        const currentPhone = STAFF_PHONE_BY_NAME[name] || '';
         row.innerHTML = confirmingDelete ? `
-          <div class="staff-edit-actions">
-            <span class="staff-delete-confirm-text">삭제할까요? 기존 기록은 그대로 남아요.</span>
-            <button type="button" class="staff-btn e-delete-cancel">취소</button>
-            <button type="button" class="staff-btn danger-outline e-delete-ok">삭제</button>
-          </div>
+          <td class="mono col-num">${idx + 1}</td>
+          <td colspan="7" class="staff-delete-confirm-text">삭제할까요? 기존 기록은 그대로 남아요.</td>
+          <td class="col-manage">
+            <button type="button" class="row-btn cancel-row e-delete-cancel">취소</button>
+            <button type="button" class="row-btn delete-row e-delete-ok">삭제</button>
+          </td>
         ` : `
-          <div class="staff-edit-field">
-            <label>이름</label>
-            <input class="e-name" value="${escapeHtml(name)}" placeholder="예: 홍길동">
-          </div>
-          <div class="staff-edit-actions">
-            ${isNew ? '' : '<button type="button" class="staff-btn danger-outline e-delete">삭제</button>'}
-            <button type="button" class="staff-btn e-cancel">취소</button>
-            <button type="button" class="staff-btn primary e-save">저장</button>
-          </div>
+          <td class="mono col-num">${idx + 1}</td>
+          <td class="col-avatar">${roleFaceIconHtml(currentRole, 28)}</td>
+          <td><input class="staff-edit-name-input e-name" value="${escapeHtml(name)}" placeholder="예: 홍길동"></td>
+          <td><input class="staff-edit-name-input e-dept" value="${escapeHtml(currentDept)}" placeholder="부서(선택)"></td>
+          <td><input class="staff-edit-name-input e-loginid mono" value="${escapeHtml(currentLoginId)}" placeholder="로그인 아이디"></td>
+          <td>
+            ${isNew ? '<span style="color:var(--text-faint); font-size:12px;">역할 비번 사용</span>' : `
+              <div class="rolepw-pw-wrap" style="max-width:150px;">
+                <input type="password" class="staff-edit-name-input e-password mono" placeholder="${ROLE_LABELS[currentRole] || '실무담당자'} 전체 적용" autocomplete="off">
+                <button type="button" class="rolepw-eye-btn e-pw-eye" aria-label="비밀번호 보기">${EYE_SVG}</button>
+              </div>
+            `}
+          </td>
+          <td><input class="staff-edit-name-input e-phone mono" value="${escapeHtml(currentPhone)}" placeholder="전화번호(선택)"></td>
+          <td>
+            <select class="staff-edit-role-select e-role">
+              ${Object.entries(ROLE_LABELS).map(([key, label]) => `<option value="${key}"${key === currentRole ? ' selected' : ''}>${label}</option>`).join('')}
+            </select>
+          </td>
+          <td class="col-manage">
+            <button type="button" class="row-btn save-row e-save">저장</button>
+            <button type="button" class="row-btn cancel-row e-cancel">취소</button>
+            ${isNew ? '' : '<button type="button" class="row-btn delete-row e-delete">삭제</button>'}
+          </td>
         `;
+        const pwInput = row.querySelector('.e-password');
+        const pwEyeBtn = row.querySelector('.e-pw-eye');
+        if (pwEyeBtn) pwEyeBtn.addEventListener('click', () => {
+          const showing = pwInput.type === 'text';
+          pwInput.type = showing ? 'password' : 'text';
+          pwEyeBtn.innerHTML = showing ? EYE_SVG : EYE_OFF_SVG;
+        });
         const cancelBtn = row.querySelector('.e-cancel');
         if (cancelBtn) cancelBtn.addEventListener('click', () => { staffEditingIdx = null; staffAddingNew = false; renderStaffTab(); });
         const deleteBtn = row.querySelector('.e-delete');
-        if (deleteBtn) deleteBtn.addEventListener('click', () => { staffPendingDeleteIdx = idx; paint(); });
+        if (deleteBtn) deleteBtn.addEventListener('click', () => {
+          if (isLastOwner(name)) { showToast('관리자가 한 명도 없으면 안 돼서, 이 계정은 삭제할 수 없어요.', 'error'); return; }
+          staffPendingDeleteIdx = idx; paint();
+        });
         const deleteCancelBtn = row.querySelector('.e-delete-cancel');
         if (deleteCancelBtn) deleteCancelBtn.addEventListener('click', () => { staffPendingDeleteIdx = null; paint(); });
         const deleteOkBtn = row.querySelector('.e-delete-ok');
-        if (deleteOkBtn) deleteOkBtn.addEventListener('click', () => {
-          STAFF_LIST = STAFF_LIST.filter((_, i) => i !== idx);
+        if (deleteOkBtn) deleteOkBtn.addEventListener('click', async () => {
+          const staffId = STAFF_ID_BY_NAME[name];
+          try {
+            const { error } = await sb.from('staff').delete().eq('id', staffId);
+            if (error) throw error;
+            await loadStaffIdMap();
+          } catch (err) {
+            console.error('사용자 삭제 실패', err);
+            showToast('사용자를 삭제하지 못했어요. 다시 시도해주세요.', 'error');
+            return;
+          }
           afterStaffChange();
           if (typeof window.refreshAllPages !== 'function') renderStaffTab();
         });
         const saveBtn = row.querySelector('.e-save');
-        if (saveBtn) saveBtn.addEventListener('click', () => {
+        if (saveBtn) saveBtn.addEventListener('click', async () => {
           const newName = row.querySelector('.e-name').value.trim();
+          const newLoginId = row.querySelector('.e-loginid').value.trim();
+          const newDept = row.querySelector('.e-dept').value.trim();
+          const newPhone = row.querySelector('.e-phone').value.trim();
+          const newRole = row.querySelector('.e-role').value;
+          const newPw = pwInput ? pwInput.value : '';
           if (!newName) { showToast('이름을 입력해주세요.', 'error'); return; }
-          if (STAFF_LIST.some((n, i) => n === newName && i !== idx)) { showToast('이미 등록된 담당자예요.', 'error'); return; }
-          if (isNew) {
-            STAFF_LIST = [...STAFF_LIST, newName];
-          } else {
-            STAFF_LIST = STAFF_LIST.map((n, i) => i === idx ? newName : n);
+          if (!newLoginId) { showToast('아이디를 입력해주세요.', 'error'); return; }
+          if (STAFF_LIST.some((n, i2) => n === newName && i2 !== idx)) { showToast('이미 등록된 사용자예요.', 'error'); return; }
+          const loginIdOwnerName = STAFF_NAME_BY_LOGIN_ID[newLoginId.toLowerCase()];
+          if (loginIdOwnerName && loginIdOwnerName !== name) { showToast('이미 사용 중인 아이디예요.', 'error'); return; }
+          if (!isNew && currentRole === 'owner' && newRole !== 'owner' && isLastOwner(name)) {
+            showToast('관리자가 한 명도 없으면 안 돼서, 역할을 바꿀 수 없어요.', 'error'); return;
+          }
+          if (newPw && newPw.length < 4) { showToast('새 비밀번호는 4자 이상으로 입력해주세요.', 'error'); return; }
+          try {
+            if (isNew) {
+              const { error } = await sb.from('staff').insert({ name: newName, login_id: newLoginId, role: newRole, department: newDept || null, phone: newPhone || null });
+              if (error) throw error;
+            } else {
+              const staffId = STAFF_ID_BY_NAME[name];
+              const { error } = await sb.from('staff').update({ name: newName, login_id: newLoginId, role: newRole, department: newDept || null, phone: newPhone || null }).eq('id', staffId);
+              if (error) throw error;
+            }
+            if (newPw) {
+              const { data: pwData, error: pwError } = await sb.rpc('change_role_password', { p_role: newRole, p_new_password: newPw });
+              if (pwError) throw pwError;
+              if (!pwData) { showToast('비밀번호를 변경하지 못했어요.', 'error'); return; }
+            }
+            await loadStaffIdMap();
+          } catch (err) {
+            console.error('사용자 저장 실패', err);
+            showToast('사용자 정보를 저장하지 못했어요. 다시 시도해주세요.', 'error');
+            return;
           }
           afterStaffChange();
           if (typeof window.refreshAllPages !== 'function') renderStaffTab();
@@ -6022,21 +6118,43 @@
       return row;
     }
 
+    function renderStaffStats(){
+      const total = STAFF_LIST.length;
+      let ownerCnt = 0, staffCnt = 0, accountingCnt = 0;
+      STAFF_LIST.forEach(n => {
+        const r = STAFF_ROLE_BY_NAME[n];
+        if (r === 'owner') ownerCnt++;
+        else if (r === 'accounting') accountingCnt++;
+        else if (r === 'staff') staffCnt++;
+      });
+      const statTotal = root.getElementById('staffStatTotal');
+      const statOwner = root.getElementById('staffStatOwner');
+      const statStaff = root.getElementById('staffStatStaff');
+      const statAccounting = root.getElementById('staffStatAccounting');
+      if (statTotal) statTotal.textContent = `${total}명`;
+      if (statOwner) statOwner.textContent = `${ownerCnt}명`;
+      if (statStaff) statStaff.textContent = `${staffCnt}명`;
+      if (statAccounting) statAccounting.textContent = `${accountingCnt}명`;
+    }
+
     function renderStaffTab(){
       staffListBody.innerHTML = '';
       if (staffAddingNew) {
         staffListBody.appendChild(renderStaffRowEdit('', STAFF_LIST.length, true));
       }
       if (!STAFF_LIST.length && !staffAddingNew) {
-        const emptyEl = document.createElement('div');
-        emptyEl.className = 'staff-empty';
-        emptyEl.textContent = '등록된 담당자가 없습니다.';
-        staffListBody.appendChild(emptyEl);
+        const emptyRow = document.createElement('tr');
+        emptyRow.className = 'staff-empty';
+        emptyRow.innerHTML = `<td colspan="9">등록된 사용자가 없습니다.</td>`;
+        staffListBody.appendChild(emptyRow);
       } else {
         STAFF_LIST.forEach((name, idx) => {
-          staffListBody.appendChild(staffEditingIdx === idx ? renderStaffRowEdit(name, idx, false) : renderStaffRowView(name, idx));
+          const rowEl = staffEditingIdx === idx ? renderStaffRowEdit(name, idx, false)
+            : renderStaffRowView(name, idx);
+          staffListBody.appendChild(rowEl);
         });
       }
+      renderStaffStats();
     }
     if (staffAddBtn) {
       staffAddBtn.addEventListener('click', () => {
@@ -6211,10 +6329,19 @@
         });
       });
       brandDropdown.querySelectorAll('.bd-ok').forEach(btn => {
-        btn.addEventListener('mousedown', (e) => {
+        btn.addEventListener('mousedown', async (e) => {
           e.preventDefault(); e.stopPropagation();
           const idx = BRAND_MASTER.findIndex(b => b.code === btn.dataset.code);
-          if (idx >= 0) BRAND_MASTER.splice(idx, 1);
+          if (idx < 0) return;
+          try {
+            const { error } = await sb.from('brands').delete().eq('id', BRAND_MASTER[idx].id);
+            if (error) throw error;
+          } catch (err) {
+            console.error('브랜드 삭제 실패', err);
+            showToast('브랜드를 삭제하지 못했어요. 다시 시도해주세요.', 'error');
+            return;
+          }
+          BRAND_MASTER.splice(idx, 1);
           pendingDeleteBrandCode = null;
           rebuildBrandMaps();
           if (window.refreshAllPages) window.refreshAllPages('domus-orderform-page');
@@ -6264,12 +6391,22 @@
       brandAddPanel.querySelector('.ba-cancel').addEventListener('click', () => {
         brandAddPanel.hidden = true; brandHint.textContent = ''; brandHint.className = 'hint';
       });
-      brandAddPanel.querySelector('.ba-ok').addEventListener('click', () => {
+      brandAddPanel.querySelector('.ba-ok').addEventListener('click', async () => {
         const code = brandAddPanel.querySelector('.ba-code').value.trim();
         const name = brandAddPanel.querySelector('.ba-name').value.trim();
         if (!code || !name) { showToast('코드와 브랜드명을 모두 입력해주세요.', 'error'); return; }
         if (BRAND_MASTER.some(b => b.code === code)) { showToast('이미 있는 코드예요. 다른 코드를 써주세요.', 'error'); return; }
-        BRAND_MASTER.push({ id: BRAND_ID_SEQ++, code, name, client:'', clientCode:'', aliases:[], clientAliases:[] });
+        let inserted;
+        try {
+          const { data, error } = await sb.from('brands').insert({ code, name }).select().single();
+          if (error) throw error;
+          inserted = data;
+        } catch (err) {
+          console.error('브랜드 등록 실패', err);
+          showToast('브랜드를 등록하지 못했어요. 다시 시도해주세요.', 'error');
+          return;
+        }
+        BRAND_MASTER.push(dbBrandToLocal(inserted));
         rebuildBrandMaps();
         // 지금 작성 중인 이 폼(점포명·수주일·일정 등)은 그대로 두고, 브랜드 관리 등 다른 화면만 최신 상태로 갱신한다.
         if (window.refreshAllPages) window.refreshAllPages('domus-orderform-page');
@@ -6357,9 +6494,19 @@
         });
       });
       clientDropdown.querySelectorAll('.cd-ok').forEach(btn => {
-        btn.addEventListener('mousedown', (e) => {
+        btn.addEventListener('mousedown', async (e) => {
           e.preventDefault(); e.stopPropagation();
           const name = btn.dataset.name;
+          try {
+            const { error } = await sb.from('clients').delete().eq('name', name);
+            if (error) throw error;
+            const { error: linkErr } = await sb.from('brand_client_links').delete().eq('client_name', name);
+            if (linkErr) throw linkErr;
+          } catch (err) {
+            console.error('발주처 삭제 실패', err);
+            showToast('발주처를 삭제하지 못했어요. 다시 시도해주세요.', 'error');
+            return;
+          }
           const idx = CLIENT_MASTER.findIndex(c => c.name === name);
           if (idx >= 0) CLIENT_MASTER.splice(idx, 1);
           Object.keys(BRAND_CLIENT_LINKS).forEach(k => {
@@ -6404,18 +6551,30 @@
       clientAddPanel.querySelector('.ca-cancel').addEventListener('click', () => {
         clientAddPanel.hidden = true; clientHint.textContent = ''; clientHint.className = 'hint';
       });
-      clientAddPanel.querySelector('.ca-ok').addEventListener('click', () => {
+      clientAddPanel.querySelector('.ca-ok').addEventListener('click', async () => {
         const code = clientAddPanel.querySelector('.ca-code').value.trim();
         const name = clientAddPanel.querySelector('.ca-name').value.trim();
         if (!name) { showToast('발주처명을 입력해주세요.', 'error'); return; }
-        if (!CLIENT_MASTER.some(c => c.name === name)) {
-          CLIENT_MASTER.push({ name, code });
-          rebuildClientMap();
-        }
         const brandCode = currentBrandCode();
-        if (brandCode) {
-          if (!BRAND_CLIENT_LINKS[brandCode]) BRAND_CLIENT_LINKS[brandCode] = [];
-          if (!BRAND_CLIENT_LINKS[brandCode].includes(name)) BRAND_CLIENT_LINKS[brandCode].push(name);
+        try {
+          if (!CLIENT_MASTER.some(c => c.name === name)) {
+            const { error } = await sb.from('clients').insert({ name, code });
+            if (error) throw error;
+            CLIENT_MASTER.push({ name, code });
+            rebuildClientMap();
+          }
+          if (brandCode) {
+            if (!BRAND_CLIENT_LINKS[brandCode] || !BRAND_CLIENT_LINKS[brandCode].includes(name)) {
+              const { error } = await sb.from('brand_client_links').insert({ brand_code: brandCode, client_name: name });
+              if (error) throw error;
+              if (!BRAND_CLIENT_LINKS[brandCode]) BRAND_CLIENT_LINKS[brandCode] = [];
+              if (!BRAND_CLIENT_LINKS[brandCode].includes(name)) BRAND_CLIENT_LINKS[brandCode].push(name);
+            }
+          }
+        } catch (err) {
+          console.error('발주처 등록 실패', err);
+          showToast('발주처를 저장하지 못했어요. 다시 시도해주세요.', 'error');
+          return;
         }
         if (window.refreshAllPages) window.refreshAllPages('domus-orderform-page');
         clientInput.value = name;
@@ -7167,13 +7326,30 @@
       `;
       const amountInput = formEl.querySelector('#payAddAmount');
       attachAmountFormatter(amountInput);
-      formEl.querySelector('#payAddBtn').addEventListener('click', () => {
+      formEl.querySelector('#payAddBtn').addEventListener('click', async () => {
         const dateVal = formEl.querySelector('#payAddDate').value;
         const memoVal = formEl.querySelector('#payAddMemo').value.trim();
         const raw = amountInput.value.replace(/[^\d]/g, '');
         if (!raw || !dateVal) return;
+        const linkedOrder = linkedOrderOfRev(r);
+        if (!linkedOrder) { showToast('연결된 수주를 찾을 수 없어 입금을 등록할 수 없어요.', 'error'); return; }
+        let inserted;
+        try {
+          const { data, error } = await sb.from('payments').insert({
+            order_id: linkedOrder.id, pay_date: dateVal, amount: Number(raw), memo: memoVal,
+          }).select().single();
+          if (error) throw error;
+          inserted = data;
+        } catch (err) {
+          console.error('입금 등록 실패', err);
+          showToast('입금 내역을 저장하지 못했어요. 다시 시도해주세요.', 'error');
+          return;
+        }
+        const newPayment = { _pid: inserted.id, date: dateVal, amount: Number(raw), memo: memoVal };
         if (!Array.isArray(r.payments)) r.payments = [];
-        r.payments.push({ date: dateVal, amount: Number(raw), memo: memoVal });
+        r.payments.push(newPayment);
+        if (!Array.isArray(linkedOrder.payments)) linkedOrder.payments = [];
+        if (linkedOrder.payments !== r.payments) linkedOrder.payments.push(newPayment);
         r.paid = isFullyPaidRev(r);
         renderPayModalRev();
         render();
@@ -7355,7 +7531,7 @@
     });
 
     attachAmountFormatter(root.getElementById('targetAmountInput'));
-    root.getElementById('addTargetBtn').addEventListener('click', () => {
+    root.getElementById('addTargetBtn').addEventListener('click', async () => {
       const keyInput = root.getElementById('targetKeyInput');
       const amountInput = root.getElementById('targetAmountInput');
       const key = keyInput.value.trim();
@@ -7369,11 +7545,22 @@
         return;
       }
       const existing = revenueTargets.find(t => t.type === targetType && t.key === key);
-      if (existing) {
-        existing.amount = amount;
-      } else {
-        const nextId = revenueTargets.reduce((m,t) => Math.max(m,t.id), 0) + 1;
-        revenueTargets.push({ id: nextId, type: targetType, key, amount });
+      try {
+        if (existing) {
+          const { error } = await sb.from('revenue_targets').update({ amount }).eq('id', existing.id);
+          if (error) throw error;
+          existing.amount = amount;
+        } else {
+          const { data, error } = await sb.from('revenue_targets').insert({
+            period_type: targetType, period_key: key, amount,
+          }).select().single();
+          if (error) throw error;
+          revenueTargets.push(dbRevenueTargetToLocal(data));
+        }
+      } catch (err) {
+        console.error('매출 목표 저장 실패', err);
+        showToast('목표를 저장하지 못했어요. 다시 시도해주세요.', 'error');
+        return;
       }
       keyInput.value = '';
       amountInput.value = '';
@@ -7419,9 +7606,18 @@
         `;
       }).join('');
       body.querySelectorAll('.target-del').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const idx = revenueTargets.findIndex(t => t.id == btn.dataset.id);
-          if (idx !== -1) revenueTargets.splice(idx, 1);
+          if (idx === -1) return;
+          try {
+            const { error } = await sb.from('revenue_targets').delete().eq('id', revenueTargets[idx].id);
+            if (error) throw error;
+          } catch (err) {
+            console.error('매출 목표 삭제 실패', err);
+            showToast('목표를 삭제하지 못했어요. 다시 시도해주세요.', 'error');
+            return;
+          }
+          revenueTargets.splice(idx, 1);
           renderTargets();
         });
       });
@@ -7717,23 +7913,47 @@
         const deleteCancelBtn = row.querySelector('.e-delete-cancel');
         if (deleteCancelBtn) deleteCancelBtn.addEventListener('click', () => { pendingDeleteId = null; paint(); });
         const deleteOkBtn = row.querySelector('.e-delete-ok');
-        if (deleteOkBtn) deleteOkBtn.addEventListener('click', () => {
+        if (deleteOkBtn) deleteOkBtn.addEventListener('click', async () => {
+          try {
+            const { error } = await sb.from('brands').delete().eq('id', b.id);
+            if (error) throw error;
+          } catch (err) {
+            console.error('브랜드 삭제 실패', err);
+            showToast('브랜드를 삭제하지 못했어요. 다시 시도해주세요.', 'error');
+            return;
+          }
           const idx = BRAND_MASTER.findIndex(x => x.id === b.id);
           if (idx >= 0) BRAND_MASTER.splice(idx, 1);
           editingId = null; pendingDeleteId = null;
           afterChange();
         });
         const saveBtn = row.querySelector('.e-save');
-        if (saveBtn) saveBtn.addEventListener('click', () => {
+        if (saveBtn) saveBtn.addEventListener('click', async () => {
           const code = row.querySelector('.e-code').value.trim();
           const name = row.querySelector('.e-name').value.trim();
           const client = row.querySelector('.e-client').value.trim();
           const clientCode = row.querySelector('.e-clientcode').value.trim();
           if (!code || !name) { showToast('코드와 브랜드명은 꼭 입력해주세요.', 'error'); return; }
-          if (isNew) {
-            BRAND_MASTER.push({ id: BRAND_ID_SEQ++, code, name, client, clientCode, aliases: draftAliases, clientAliases: draftClientAliases });
-          } else {
-            Object.assign(b, { code, name, client, clientCode, aliases: draftAliases, clientAliases: draftClientAliases });
+          try {
+            if (isNew) {
+              const { data, error } = await sb.from('brands').insert({
+                code, name, client, client_code: clientCode,
+                aliases: draftAliases, client_aliases: draftClientAliases,
+              }).select().single();
+              if (error) throw error;
+              BRAND_MASTER.push(dbBrandToLocal(data));
+            } else {
+              const { error } = await sb.from('brands').update({
+                code, name, client, client_code: clientCode,
+                aliases: draftAliases, client_aliases: draftClientAliases,
+              }).eq('id', b.id);
+              if (error) throw error;
+              Object.assign(b, { code, name, client, clientCode, aliases: draftAliases, clientAliases: draftClientAliases });
+            }
+          } catch (err) {
+            console.error('브랜드 저장 실패', err);
+            showToast('브랜드를 저장하지 못했어요. 다시 시도해주세요.', 'error');
+            return;
           }
           editingId = null; addingNew = false;
           afterChange();
@@ -8022,15 +8242,16 @@
 
     window.currentRole = role;
     window.currentRep = rep || null;
-    const roleText = role === 'owner' ? '관리자' : role === 'accounting' ? '경리' : `직원 (${rep})`;
-    document.getElementById('roleIndicatorText').textContent = roleText;
-    document.getElementById('sbRoleIndicatorText').textContent = roleText;
-    const revenueEl = document.querySelector('domus-revenue-page');
-    if (revenueEl && revenueEl.refresh) revenueEl.refresh();
-    const orderformEl = document.querySelector('domus-orderform-page');
-    if (orderformEl && orderformEl.refresh) orderformEl.refresh();
-    const salesEl = document.querySelector('domus-sales-page');
-    if (salesEl && salesEl.refresh) salesEl.refresh();
+    const indicatorRoleKey = role === 'owner' ? 'owner' : role === 'accounting' ? 'accounting' : (STAFF_ROLE_BY_NAME[rep] || 'staff');
+    const roleText = `${roleFaceIconHtml(indicatorRoleKey, 20)}${escapeHtml(rep || '')}`;
+    document.getElementById('roleIndicatorText').innerHTML = roleText;
+    document.getElementById('sbRoleIndicatorText').innerHTML = roleText;
+    // 로그인 화면이 떠 있던 동안(=서버에서 실제 데이터를 불러오기 전) 이미 화면에 붙어있던
+    // 화면 요소들은 그때의 빈 상태로 그려진 채로 멈춰 있다 — 예전엔 영업 관리·수주 등록·매출
+    // 관리만 여기서 각각 refresh()를 불러줘서, 일정표·오늘 할 일 화면은 로그인 직후 데이터가
+    // 이미 다 있는데도 새로고침 전(빈 상태) 그대로 남아있는 버그가 있었다. 전체를 한 번에
+    // 갱신하는 refreshAllPages()로 바꿔서 어떤 화면이든 빠짐없이 최신 데이터로 그려지게 한다.
+    if (typeof window.refreshAllPages === 'function') window.refreshAllPages();
     buildNav();
     activeView = 'schedule';
     switchView('schedule');
@@ -8043,32 +8264,75 @@
     window.currentRep = null;
     document.getElementById('appShell').hidden = true;
     document.getElementById('loginScreen').hidden = false;
+    document.getElementById('loginIdInput').value = '';
+    document.getElementById('loginIdPwInput').value = '';
+    document.getElementById('loginIdPwInput').type = 'password';
+    const eyeBtn = document.getElementById('loginPwEyeBtn');
+    if (eyeBtn) eyeBtn.innerHTML = EYE_SVG;
+    document.getElementById('loginIdError').hidden = true;
   }
 
-  // 관리자 = 이재황 (담당자 선택 목록에서는 제외되고, 관리자로 바로 로그인)
-  document.getElementById('loginOwnerBtn').addEventListener('click', () => enterApp('owner', OWNER_STAFF_NAME));
-  // 경리 = 특정 담당자에 속하지 않는 별도 계정. 화면 구성은 담당자와 거의 같지만,
-  // 영업 관리에서는 모든 담당자의 건을 다 보고 금액 확인·입금 내역 수정까지 할 수 있어야 한다.
-  document.getElementById('loginAccountingBtn').addEventListener('click', () => enterApp('accounting', null));
-  document.getElementById('loginGeneralBtn').addEventListener('click', () => enterApp('staff', '일반'));
+  // ===== 로그인: 아이디 + 비밀번호 =====
+  // 아이디는 사람마다 다르지만(사용자 관리에서 지정), 비밀번호는 사람별이 아니라 권한
+  // 4단계(관리자/경영지원/실무담당자/일반사용자) 단위로 하나씩만 있다 — 일반사용자도
+  // 다른 세 역할과 똑같이 사용자 관리에서 개인 아이디를 받고, 사용자 비밀번호 변경에서
+  // 관리자가 그 역할의 공용 비밀번호를 바꾼다. 아이디로 그 사람을 찾고, 그 사람의
+  // 역할이 정해지면 그 역할의 비밀번호가 맞는지만 서버(check_role_password RPC)에서 확인한다.
+  const loginIdInput = document.getElementById('loginIdInput');
+  const loginIdPwInput = document.getElementById('loginIdPwInput');
+  const loginIdError = document.getElementById('loginIdError');
 
-  // 담당자별 로그인 버튼은 STAFF_LIST에서 그때그때 새로 그린다 — 영업 관리 > 담당자 관리
-  // 탭에서 담당자를 추가/수정/삭제하면 이 버튼 목록도 바로 따라서 바뀌어야 하기 때문이다.
-  // 관리자 계정과 같은 사람(OWNER_STAFF_NAME)은 이미 "관리자로 로그인" 버튼이 있으니 뺀다.
-  window.renderStaffLoginButtons = function(){
-    const generalBtn = document.getElementById('loginGeneralBtn');
-    document.querySelectorAll('#loginButtons .login-btn[data-rep]:not(#loginGeneralBtn)').forEach(b => b.remove());
-    STAFF_LIST.filter(name => name !== OWNER_STAFF_NAME).forEach(name => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'login-btn';
-      btn.dataset.rep = name;
-      btn.textContent = `${name}로 로그인`;
-      btn.addEventListener('click', () => enterApp('staff', name));
-      generalBtn.parentNode.insertBefore(btn, generalBtn);
+  const loginPwEyeBtn = document.getElementById('loginPwEyeBtn');
+  if (loginPwEyeBtn) {
+    loginPwEyeBtn.innerHTML = EYE_SVG;
+    loginPwEyeBtn.addEventListener('click', () => {
+      const showing = loginIdPwInput.type === 'text';
+      loginIdPwInput.type = showing ? 'password' : 'text';
+      loginPwEyeBtn.innerHTML = showing ? EYE_SVG : EYE_OFF_SVG;
     });
-  };
-  window.renderStaffLoginButtons();
+  }
+
+  async function submitIdLogin(){
+    const idVal = loginIdInput.value.trim();
+    const pwVal = loginIdPwInput.value;
+    loginIdError.hidden = true;
+    if (!idVal) { loginIdError.textContent = '아이디를 입력해주세요.'; loginIdError.hidden = false; loginIdInput.focus(); return; }
+    if (!pwVal) { loginIdError.textContent = '비밀번호를 입력해주세요.'; loginIdError.hidden = false; loginIdPwInput.focus(); return; }
+    if (!sb) { loginIdError.textContent = '서버에 연결하지 못했어요. 인터넷 연결을 확인해주세요.'; loginIdError.hidden = false; return; }
+    const name = STAFF_NAME_BY_LOGIN_ID[idVal.toLowerCase()];
+    if (!name) {
+      loginIdError.textContent = '일치하는 아이디가 없어요.';
+      loginIdError.hidden = false;
+      loginIdInput.focus();
+      loginIdInput.select();
+      return;
+    }
+    const dbRole = STAFF_ROLE_BY_NAME[name] || 'staff';
+    const enterAppRole = dbRole === 'owner' ? 'owner' : dbRole === 'accounting' ? 'accounting' : 'staff';
+    const submitBtn = document.getElementById('loginIdSubmitBtn');
+    submitBtn.disabled = true;
+    try {
+      const { data, error } = await sb.rpc('check_role_password', { p_role: dbRole, p_password: pwVal });
+      if (error) throw error;
+      if (!data) {
+        loginIdError.textContent = '비밀번호가 올바르지 않아요.';
+        loginIdError.hidden = false;
+        loginIdPwInput.focus();
+        loginIdPwInput.select();
+        return;
+      }
+      loginIdPwInput.value = '';
+      await enterApp(enterAppRole, name);
+    } catch (err) {
+      console.error('로그인 확인 실패', err);
+      loginIdError.textContent = '서버에 연결하지 못했어요. 다시 시도해주세요.';
+      loginIdError.hidden = false;
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+  const loginIdForm = document.getElementById('loginIdForm');
+  if (loginIdForm) loginIdForm.addEventListener('submit', (e) => { e.preventDefault(); submitIdLogin(); });
 
   document.getElementById('logoutBtn').addEventListener('click', doLogout);
   document.getElementById('sbLogoutBtn').addEventListener('click', doLogout);
