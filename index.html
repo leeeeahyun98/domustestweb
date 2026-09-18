@@ -912,9 +912,85 @@
 </div><!-- /templates -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
   'use strict';
+
+  // ===== Supabase 연결 (1단계: 수주/일정 데이터만 실제 서버에 저장) =====
+  // 2026-09-18부터 수주 등록·영업 관리·일정표는 이 브라우저 메모리(ORDERS/ORDER_TASKS)가
+  // 아니라 실제 Supabase 데이터베이스가 원본이다. 로그인 시 서버에서 불러와 ORDERS/ORDER_TASKS를
+  // 채우고, 등록·수정·삭제할 때마다 서버에도 같이 반영한다. 브랜드/발주처/담당자 목록은 아직
+  // 이 단계 대상이 아니라 이전처럼 이 파일 안에서만 관리된다(다음 단계에서 연결 예정).
+  const SUPABASE_URL = 'https://vafklakfnyyszzjppkeg.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhZmtsYWtmbnl5c3p6anBwa2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2MDc5ODEsImV4cCI6MjEwNTE4Mzk4MX0.kfieqrn6kHWaB6kaR5k9qyenndUaz6Gvz2R2Go17wh8';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // 아직 로그인은 예전처럼 역할 버튼 방식이라, Supabase에는 "이재황" 계정으로 매번 자동
+  // 로그인해서 RLS(로그인한 사람만 읽고 쓸 수 있다)를 통과시킨다 — 다음 단계(진짜 로그인)에서
+  // 여기를 실제로 클릭한 사람 계정으로 로그인하도록 바꾼다.
+  const SUPABASE_BOOTSTRAP_EMAIL = 'leejaehwang@domus-mes.test';
+  const SUPABASE_BOOTSTRAP_PASSWORD = 'domus1234!';
+  let supabaseAuthReady = null;
+  function ensureSupabaseAuth(){
+    if (!supabaseAuthReady) {
+      supabaseAuthReady = sb.auth.signInWithPassword({ email: SUPABASE_BOOTSTRAP_EMAIL, password: SUPABASE_BOOTSTRAP_PASSWORD });
+    }
+    return supabaseAuthReady;
+  }
+
+  // 담당자 이름 <-> staff 테이블 id 매핑. 지금은 담당자 목록 자체(STAFF_LIST)는 이 파일 안에서만
+  // 관리되지만, 수주/일정 데이터는 DB에 rep_id(숫자)로 저장해야 해서 이름으로 찾아 변환해준다.
+  let STAFF_ID_BY_NAME = {};
+  let STAFF_NAME_BY_ID = {};
+  async function loadStaffIdMap(){
+    const { data, error } = await sb.from('staff').select('id, name');
+    if (error) { console.error('담당자 목록 불러오기 실패', error); return; }
+    STAFF_ID_BY_NAME = {}; STAFF_NAME_BY_ID = {};
+    (data || []).forEach(s => { STAFF_ID_BY_NAME[s.name] = s.id; STAFF_NAME_BY_ID[s.id] = s.name; });
+  }
+
+  function dbOrderToLocal(row){
+    const payments = (row.payments || []).map(p => ({ _pid: p.id, date: p.pay_date, amount: Number(p.amount), memo: p.memo || '' }));
+    const paid = payments.length > 0 && (row.final_amount == null || payments.reduce((s,p)=>s+p.amount,0) >= Number(row.final_amount));
+    return {
+      id: row.id, brand: row.brand, client: row.client, store: row.store,
+      rep: STAFF_NAME_BY_ID[row.rep_id] || '',
+      orderDate: row.order_date, confirmDate: row.confirm_date || '—',
+      urgent: !!row.urgent, next: row.next_delivery_date || '—',
+      amount: row.amount == null ? null : Number(row.amount),
+      finalAmount: row.final_amount == null ? null : Number(row.final_amount),
+      confirmed: !!row.confirmed, paid, payments,
+      contact: row.contact || null,
+    };
+  }
+
+  function dbTaskToLocal(row){
+    return {
+      id: row.id, orderId: row.order_id, date: row.task_date, time: row.task_time || '',
+      brand: row.brand || '', store: row.store || '', client: row.client || '',
+      task: row.task || '', material: row.material || '', qty: row.qty || '',
+      op: STAFF_NAME_BY_ID[row.rep_id] || '', solo: !!row.solo, done: !!row.done,
+    };
+  }
+
+  // 로그인 직후 한 번 서버에서 실제 수주/일정 데이터를 불러와 ORDERS/ORDER_TASKS를 채운다.
+  // (배열 자체를 새로 만들지 않고 length=0 후 push하는 이유: 이미 다른 화면 코드가 이 배열을
+  // 그대로 붙잡고 있는 경우가 있어서, 배열의 "정체성"은 유지하고 내용만 통째로 바꿔야 한다.)
+  async function loadOrdersAndTasksFromServer(){
+    await ensureSupabaseAuth();
+    await loadStaffIdMap();
+    const [ordersRes, tasksRes] = await Promise.all([
+      sb.from('orders').select('*, payments(*)').order('id'),
+      sb.from('order_tasks').select('*').order('id'),
+    ]);
+    if (ordersRes.error) { console.error('수주 불러오기 실패', ordersRes.error); showToast('수주 데이터를 불러오지 못했어요. 새로고침 해보세요.', 'error'); return; }
+    if (tasksRes.error) { console.error('일정 불러오기 실패', tasksRes.error); showToast('일정 데이터를 불러오지 못했어요. 새로고침 해보세요.', 'error'); return; }
+    ORDERS.length = 0;
+    ORDERS.push(...ordersRes.data.map(dbOrderToLocal));
+    ORDER_TASKS.length = 0;
+    ORDER_TASKS.push(...tasksRes.data.map(dbTaskToLocal));
+  }
 
   // 담당자 이름 목록 — 영업 관리 > 담당자 관리 탭에서 추가·수정·삭제하는 단일 출처다.
   // 예전엔 수주 등록/영업 관리/일정표가 각자 따로 이 이름 목록을 하드코딩해서 들고 있어서,
@@ -4610,7 +4686,19 @@
                 pendingDeleteId = null;
                 openDay(date, dayEvents, dayCustom);
               });
-              card.querySelector('.e-delete-ok').addEventListener('click', () => {
+              card.querySelector('.e-delete-ok').addEventListener('click', async () => {
+                if (ev.__orderTaskRef) {
+                  const t = ev.__orderTaskRef;
+                  try {
+                    await ensureSupabaseAuth();
+                    const { error } = await sb.from('order_tasks').delete().eq('id', t.id);
+                    if (error) throw error;
+                  } catch (err) {
+                    console.error('일정 삭제 실패', err);
+                    showToast('삭제하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+                    return;
+                  }
+                }
                 removeEventFromEvents(ev);
                 // 수주 등록에서 만들어진 납품 일정이면 원본 데이터(ORDER_TASKS)에서도 완전히 지워서,
                 // 다른 화면이나 다시 들어왔을 때 되살아나지 않게 한다.
@@ -4624,6 +4712,10 @@
                     const taskDates = ORDER_TASKS.filter(x => x.orderId === linkedOrder.id).map(x => x.date).filter(Boolean).sort();
                     linkedOrder.next = taskDates.length ? taskDates[0] : '—';
                     syncRevenueFromOrder(linkedOrder);
+                    try {
+                      await ensureSupabaseAuth();
+                      await sb.from('orders').update({ next_delivery_date: taskDates.length ? taskDates[0] : null }).eq('id', linkedOrder.id);
+                    } catch (err) { console.error('수주 납품일 갱신 실패', err); }
                   }
                 }
                 pendingDeleteId = null;
@@ -4644,7 +4736,7 @@
               openDay(date, dayEvents, dayCustom);
             });
             const saveBtn = card.querySelector('.e-save');
-            if (saveBtn) saveBtn.addEventListener('click', () => {
+            if (saveBtn) saveBtn.addEventListener('click', async () => {
               const newDateStr = card.querySelector('.e-date').value;
               ev.time = `${pad(Number(card.querySelector('.e-time-h').value))}:${pad(Number(card.querySelector('.e-time-m').value))}`;
               ev.task = card.querySelector('.e-task').value.trim();
@@ -4671,6 +4763,18 @@
                 t.material = ev.material;
                 t.qty = ev.qty;
                 t.op = ev.op;
+                try {
+                  await ensureSupabaseAuth();
+                  const { error } = await sb.from('order_tasks').update({
+                    task_date: t.date, task_time: t.time, task: t.task,
+                    material: t.material, qty: String(t.qty), rep_id: STAFF_ID_BY_NAME[t.op] || null,
+                  }).eq('id', t.id);
+                  if (error) throw error;
+                } catch (err) {
+                  console.error('일정 수정 실패', err);
+                  showToast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+                  return;
+                }
                 // 이 납품 일정이 속한 수주 건의 납품일(영업 관리 표의 "납품일", 매출 관리의 매출 날짜
                 // 기준)도 같이 맞춰준다 — 한 건에 납품 일정이 여러 개면 그중 가장 이른 날짜로 잡는다.
                 const linkedOrder = ORDERS.find(o => o.id === t.orderId);
@@ -4678,6 +4782,9 @@
                   const taskDates = ORDER_TASKS.filter(x => x.orderId === linkedOrder.id).map(x => x.date).filter(Boolean).sort();
                   linkedOrder.next = taskDates.length ? taskDates[0] : '—';
                   syncRevenueFromOrder(linkedOrder);
+                  try {
+                    await sb.from('orders').update({ next_delivery_date: taskDates.length ? taskDates[0] : null }).eq('id', linkedOrder.id);
+                  } catch (err) { console.error('수주 납품일 갱신 실패', err); }
                 }
               }
               editingEventId = null;
@@ -5094,9 +5201,20 @@
         btn.addEventListener('click', (e) => { e.stopPropagation(); pendingDeleteId = null; render(); });
       });
       tbody.querySelectorAll('.delete-ok').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const id = Number(btn.dataset.id);
+          try {
+            await ensureSupabaseAuth();
+            // 서버에서 order를 지우면 연결된 order_tasks·payments 행도 DB가 알아서 같이 지운다
+            // (on delete cascade로 걸어뒀다).
+            const { error } = await sb.from('orders').delete().eq('id', id);
+            if (error) throw error;
+          } catch (err) {
+            console.error('수주 삭제 실패', err);
+            showToast('삭제하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+            return;
+          }
           // 수주 건을 지우면 연동된 매출 내역과, 일정표에 남아있는 이 건의 납품 일정도 함께 지워서
           // 다른 화면에 유령처럼 남아있지 않게 한다.
           const oi = ORDERS.findIndex(x => x.id === id);
@@ -5123,7 +5241,7 @@
         btn.addEventListener('click', () => openPayModal(Number(btn.dataset.id)));
       });
       tbody.querySelectorAll('.save-row').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const id = Number(btn.dataset.id);
           const o = orders.find(x => x.id === id);
           const row = btn.closest('tr');
@@ -5151,6 +5269,25 @@
             // 반대로 입력했던 수주액을 지우면 확정을 취소해서 다시 "진행 중 견적"으로 돌아가게 한다
             // (안 그러면 수주 금액은 0으로 빠지는데 수주 건수는 계속 잡혀 있는 불일치가 생긴다).
             o.confirmed = !!o.finalAmount;
+          }
+          try {
+            await ensureSupabaseAuth();
+            const { error: orderUpdateErr } = await sb.from('orders').update({
+              rep_id: STAFF_ID_BY_NAME[o.rep] || null,
+              order_date: o.orderDate,
+              confirm_date: isValidIsoDate(o.confirmDate) ? o.confirmDate : null,
+              next_delivery_date: isValidIsoDate(o.next) ? o.next : null,
+              amount: o.amount, final_amount: o.finalAmount, confirmed: o.confirmed,
+            }).eq('id', o.id);
+            if (orderUpdateErr) throw orderUpdateErr;
+            if (linkedTasksForNext.length === 1 && isValidIsoDate(o.next)) {
+              const { error: taskUpdateErr } = await sb.from('order_tasks').update({ task_date: o.next }).eq('id', linkedTasksForNext[0].id);
+              if (taskUpdateErr) throw taskUpdateErr;
+            }
+          } catch (err) {
+            console.error('수주 수정 실패', err);
+            showToast('수정 내용을 저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+            return;
           }
           // 수주 확정 상태나 담당자·발주처·날짜 등이 바뀌면 매출 관리 쪽에 연동된 매출 건도 같이 맞춘다.
           syncRevenueFromOrder(o);
@@ -5307,8 +5444,20 @@
         });
       });
       listEl.querySelectorAll('.pay-del-ok').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const idx = Number(btn.dataset.idx);
+          const target = o.payments[idx];
+          try {
+            await ensureSupabaseAuth();
+            if (target && target._pid != null) {
+              const { error } = await sb.from('payments').delete().eq('id', target._pid);
+              if (error) throw error;
+            }
+          } catch (err) {
+            console.error('입금 삭제 실패', err);
+            showToast('삭제하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+            return;
+          }
           o.payments.splice(idx, 1);
           o.paid = isFullyPaid(o);
           pendingPayDeleteIdx = null;
@@ -5333,13 +5482,24 @@
       listEl.querySelectorAll('.save-pay').forEach(btn => {
         const row = btn.closest('.pay-item-editing');
         attachAmountFormatter(row.querySelector('.edit-pay-amount'));
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           const idx = Number(btn.dataset.idx);
           const p = o.payments[idx];
           const dateVal = row.querySelector('.edit-pay-date').value;
           const memoVal = row.querySelector('.edit-pay-memo').value.trim();
           const raw = row.querySelector('.edit-pay-amount').value.replace(/[^\d]/g, '');
           if (!raw || !dateVal) return;
+          try {
+            await ensureSupabaseAuth();
+            if (p._pid != null) {
+              const { error } = await sb.from('payments').update({ pay_date: dateVal, memo: memoVal, amount: Number(raw) }).eq('id', p._pid);
+              if (error) throw error;
+            }
+          } catch (err) {
+            console.error('입금 수정 실패', err);
+            showToast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+            return;
+          }
           p.date = dateVal;
           p.memo = memoVal;
           p.amount = Number(raw);
@@ -5352,13 +5512,26 @@
       });
       const amountInput = formEl.querySelector('#payAddAmount');
       attachAmountFormatter(amountInput);
-      formEl.querySelector('#payAddBtn').addEventListener('click', () => {
+      formEl.querySelector('#payAddBtn').addEventListener('click', async () => {
         const dateVal = formEl.querySelector('#payAddDate').value;
         const memoVal = formEl.querySelector('#payAddMemo').value.trim();
         const raw = amountInput.value.replace(/[^\d]/g, '');
         if (!raw || !dateVal) return;
+        let inserted;
+        try {
+          await ensureSupabaseAuth();
+          const { data, error } = await sb.from('payments').insert({
+            order_id: o.id, pay_date: dateVal, amount: Number(raw), memo: memoVal,
+          }).select().single();
+          if (error) throw error;
+          inserted = data;
+        } catch (err) {
+          console.error('입금 추가 실패', err);
+          showToast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+          return;
+        }
         if (!Array.isArray(o.payments)) o.payments = [];
-        o.payments.push({ date: dateVal, amount: Number(raw), memo: memoVal });
+        o.payments.push({ _pid: inserted.id, date: dateVal, amount: Number(raw), memo: memoVal });
         o.paid = isFullyPaid(o);
         renderPayModal();
         render();
@@ -6383,7 +6556,7 @@
     // 바뀌어 이 화면이 더 이상 자동으로 재마운트되지 않게 되더라도, 같은 내용이 중복
     // 저장되지 않도록 명시적으로 막는다(우연히 재마운트에 기대던 기존 방식 대신).
     let isSaving = false;
-    function saveOrder(){
+    async function saveOrder(){
       if (isSaving) return;
 
       const missing = [];
@@ -6410,11 +6583,8 @@
       const amountRaw = stripCommas(root.getElementById('f-amount').value);
       const amount = amountRaw ? Number(amountRaw) : null;
 
-      // 새 수주 건의 id — 영업 관리가 그대로 참조하는 ORDERS 배열에 실제로 추가한다.
-      const newOrderId = ORDERS.length ? Math.max(...ORDERS.map(o => o.id)) + 1 : 0;
-
-      // 납품 일정 행들을 ORDER_TASKS로 옮겨서, 일정표·오늘 할 일 화면이 바로 읽어가도록 한다.
-      const taskDates = [];
+      // 납품 일정 행들을 먼저 정리해둔다 — 실제 저장(및 id 발급)은 서버에 order를 만든 뒤에 한다.
+      const taskDrafts = [];
       [...taskList.querySelectorAll('.task-row')].forEach(row => {
         const dateInput = row.querySelector('input[type="date"]');
         const dateVal = dateInput ? dateInput.value : '';
@@ -6424,15 +6594,13 @@
         const isMetal = row.querySelector('.task-material-chips .chip.active').dataset.v === '금속';
         const qtySelect = row.querySelector('.qty-select');
         const qty = qtySelect.value === 'custom' ? (row.querySelector('.qty-custom').value.trim() || '-') : qtySelect.value;
-        const taskId = ORDER_TASKS.length ? Math.max(...ORDER_TASKS.map(t => t.id)) + 1 : 0;
-        ORDER_TASKS.push({
-          id: taskId, orderId: newOrderId, date: dateVal, time: `${h}:00`,
+        taskDrafts.push({
+          date: dateVal, time: `${h}:00`,
           brand: brandVal.split(' ')[0], store: storeVal, client: clientVal, task: desc || '납품',
           material: isMetal ? '금속' : '', qty, op: repVal, solo: false, done: false,
         });
-        taskDates.push(dateVal);
       });
-      taskDates.sort();
+      const taskDates = taskDrafts.map(t => t.date).sort();
       const nextField = taskDates.length ? taskDates[0] : '—';
 
       // "연락처 상세(선택)" 카드에 입력한 값들 — 예전엔 발주처 자동완성에만 쓰이고 저장은
@@ -6448,12 +6616,43 @@
       };
       const hasContact = Object.values(contact).some(v => v);
 
-      ORDERS.push({
-        id: newOrderId, brand: brandVal, client: clientVal, store: storeVal, rep: repVal,
-        orderDate: orderDateIso, confirmDate: confirmDateIso || '—',
-        urgent, next: nextField, amount, finalAmount: null, confirmed: false, paid: false,
-        contact: hasContact ? contact : null,
-      });
+      // 서버(Supabase)에 실제로 저장한다. id는 서버가 발급해주는 값을 그대로 쓴다 —
+      // 이 화면 안에서 임의로 계산한 번호를 쓰면 다른 사람이 동시에 등록했을 때 번호가
+      // 겹칠 수 있어서, 반드시 서버가 준 진짜 id를 써야 한다.
+      try {
+        await ensureSupabaseAuth();
+        const { data: orderRow, error: orderErr } = await sb.from('orders').insert({
+          brand: brandVal, client: clientVal, store: storeVal,
+          rep_id: STAFF_ID_BY_NAME[repVal] || null,
+          order_date: orderDateIso, confirm_date: confirmDateIso || null,
+          urgent, next_delivery_date: taskDates.length ? taskDates[0] : null,
+          amount, final_amount: null, confirmed: false,
+          contact: hasContact ? contact : null,
+        }).select().single();
+        if (orderErr) throw orderErr;
+
+        let taskRows = [];
+        if (taskDrafts.length) {
+          const { data: insertedTasks, error: taskErr } = await sb.from('order_tasks').insert(
+            taskDrafts.map(t => ({
+              order_id: orderRow.id, task_date: t.date, task_time: t.time,
+              brand: t.brand, store: t.store, client: t.client, task: t.task,
+              material: t.material, qty: t.qty, rep_id: STAFF_ID_BY_NAME[t.op] || null,
+              solo: t.solo, done: t.done,
+            }))
+          ).select();
+          if (taskErr) throw taskErr;
+          taskRows = insertedTasks;
+        }
+
+        taskRows.forEach(row => ORDER_TASKS.push(dbTaskToLocal(row)));
+        ORDERS.push(dbOrderToLocal({ ...orderRow, payments: [] }));
+      } catch (err) {
+        console.error('수주 저장 실패', err);
+        showToast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+        isSaving = false;
+        return;
+      }
 
       showToast('수주가 등록되었습니다. 영업 관리·일정표에 바로 반영됩니다.');
       if (typeof window.refreshAllPages === 'function') window.refreshAllPages();
@@ -6557,9 +6756,21 @@
           </div>
           <div class="check">✓</div>
         `;
-        row.addEventListener('click', () => {
+        row.addEventListener('click', async () => {
           t.done = !t.done;
           render();
+          // 수주 등록에서 만들어진 진짜 납품 일정(__orderTaskRef가 있는 것)만 서버에도 저장한다 —
+          // 이 화면의 나머지 데모용 작업 목록은 원래도 저장되지 않는 임시 항목이다.
+          if (t.__orderTaskRef) {
+            try {
+              await ensureSupabaseAuth();
+              const { error } = await sb.from('order_tasks').update({ done: t.done }).eq('id', t.__orderTaskRef.id);
+              if (error) throw error;
+            } catch (err) {
+              console.error('완료 처리 저장 실패', err);
+              showToast('저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+            }
+          }
         });
         listEl.appendChild(row);
       });
@@ -6572,7 +6783,9 @@
      Revenue page init
      ========================================================= */
   function initRevenuePage(root, appRole, currentRep){
-    const won = n => n.toLocaleString('ko-KR') + '원';
+    // 견적금액을 입력하지 않고 등록한 수주 건이 확정되면 quoteAmount가 null인 채로 매출 관리에
+    // 넘어올 수 있어서(견적 없이 바로 확정 금액만 입력하는 경우), null이면 0원으로 본다.
+    const won = n => (n == null ? 0 : n).toLocaleString('ko-KR') + '원';
     const pad2 = n => String(n).padStart(2,'0');
     const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
     // 영업 관리와 같은 압축 날짜 표기("2025-08-15" -> "25.08.15") — 두 화면을 나란히 비교하기 쉽게 맞춘다.
@@ -7790,7 +8003,23 @@
     if (document.getElementById('navDropdown').hidden) openNavMenu(); else closeNavMenu();
   }
 
-  function enterApp(role, rep){
+  async function enterApp(role, rep){
+    // 로그인 버튼을 누른 즉시 서버에서 실제 수주/일정 데이터를 불러온다 — 그동안 버튼을
+    // 잠그고 "불러오는 중" 표시를 해서, 로딩 전 화면(빈 데이터)이 잠깐 보이는 걸 막는다.
+    const loginButtonsEl = document.getElementById('loginButtons');
+    const prevPointerEvents = loginButtonsEl ? loginButtonsEl.style.pointerEvents : '';
+    if (loginButtonsEl) loginButtonsEl.style.pointerEvents = 'none';
+    if (loginButtonsEl) loginButtonsEl.style.opacity = '.5';
+    try {
+      await loadOrdersAndTasksFromServer();
+    } catch (err) {
+      console.error('로그인 시 데이터 불러오기 실패', err);
+      showToast('서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.', 'error');
+      if (loginButtonsEl) { loginButtonsEl.style.pointerEvents = prevPointerEvents; loginButtonsEl.style.opacity = ''; }
+      return;
+    }
+    if (loginButtonsEl) { loginButtonsEl.style.pointerEvents = prevPointerEvents; loginButtonsEl.style.opacity = ''; }
+
     window.currentRole = role;
     window.currentRep = rep || null;
     const roleText = role === 'owner' ? '관리자' : role === 'accounting' ? '경리' : `직원 (${rep})`;
